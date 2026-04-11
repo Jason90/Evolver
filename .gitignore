@@ -1,2 +1,149 @@
+# --- Repo-specific (existing) ---
+# 若需将 /doc 或 /code 纳入版本库，请删除或注释对应行。
 /code
 /doc
+
+# --- Build outputs (.NET / MSBuild) ---
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+**/publish/
+
+# Benchmark / profiling
+BenchmarkDotNet.Artifacts/
+*.DotTrace
+
+# Test & coverage
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+*.opencover.xml
+*.snupkg
+
+# NuGet (user-level restore artifacts; lock files often committed — keep if you version them)
+*.nupkg
+**/packages/*
+!**/packages/build/
+*.nuget.cache
+project.lock.json
+project.fragment.lock.json
+
+# Visual Studio
+.vs/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.pidb
+*.svclog
+*.vsp
+*.vspx
+*.sap
+
+# VS / MSBuild
+*.plg
+*.opt
+*.VC.db
+*.VC.VC.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db-wal
+
+# ReSharper / Rider / VS Code
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+.idea/
+*.sln.iml
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Azure Functions
+local.settings.json
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# Local tools & secrets (uncomment if you never commit these)
+# *.pfx
+# secrets.json
+
+# Blazor / Web (build output lives under bin/obj; optional bundled dist)
+wwwroot/dist/
+
+# Misc build
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.scc
+_Chutzpah*
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# InstallShield output
+[Ee]xpress/
+
+# DocProject
+DocProject/buildhelp/
+
+# Click-Once / publish profiles (output already under **/publish/)
+
+# Publish Web Output
+*.Publish.xml
+*.azurePubxml
+*.pubxml
+*.publishproj
+
+# Azure Stream Analytics local run output
+ASALocalRun/
+
+# MSBuild Binary and Structured Log
+*.binlog
+
+# Local History for Visual Studio
+.localhistory/
