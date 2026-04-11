@@ -1,0 +1,75 @@
+@page "/import"
+@using System.Net.Http.Headers
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
+
+<PageTitle>Import</PageTitle>
+
+<h1>Import</h1>
+
+<p>导入原始 Excel（如 <code>Grill_Shack_v29_menu_intelligence_fixed.xlsx</code>）。</p>
+
+<InputFile OnChange="OnFileSelected" accept=".xlsx" />
+
+@if (_busy)
+{
+    <p>正在导入…</p>
+}
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_result is not null)
+{
+    <div class="alert alert-success">
+        <div>ProductsUpserted: @_result.ProductsUpserted</div>
+        <div>MarketsUpserted: @_result.MarketsUpserted</div>
+        <div>SalesEntriesUpserted: @_result.SalesEntriesUpserted</div>
+        <div>MenuIntelligenceRecordsUpserted: @_result.MenuIntelligenceRecordsUpserted</div>
+    </div>
+}
+
+@code {
+    private bool _busy;
+    private string? _error;
+    private ImportResultDto? _result;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        _result = null;
+        _busy = true;
+
+        try
+        {
+            var file = e.File;
+            await using var stream = file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            content.Add(fileContent, "file", file.Name);
+
+            var resp = await Http.PostAsync("api/import/xlsx", content);
+            resp.EnsureSuccessStatusCode();
+
+            var envelope = await resp.Content.ReadFromJsonAsync<ApiEnvelopeJson<ImportResultDto>>();
+            if (envelope?.Success == true)
+                _result = envelope.Data;
+            else
+                _error = envelope?.Message ?? "Import failed.";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
+

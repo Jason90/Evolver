@@ -1,0 +1,236 @@
+@page "/products"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@using Evolver.Frontend.Services
+@inject HttpClient Http
+@inject AuthTokenStore Tokens
+@inject IJSRuntime JS
+
+<PageTitle>Products</PageTitle>
+
+<h1>商品信息</h1>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="card mb-4">
+        <div class="card-header">@(_editingId is null ? "新建商品" : $"编辑商品 #{_editingId}")</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label">编码</label>
+                    <input class="form-control" @bind="_code" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">名称</label>
+                    <input class="form-control" @bind="_name" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">单价</label>
+                    <input class="form-control" type="number" step="0.01" @bind="_unitPrice" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">成本（可选）</label>
+                    <input class="form-control" inputmode="decimal" @bind="_unitCostStr" placeholder="留空表示无" />
+                </div>
+                <div class="col-md-12 mt-2">
+                    @if (_editingId is null)
+                    {
+                        <button class="btn btn-primary" @onclick="CreateAsync" disabled="@_busy">添加</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-primary" @onclick="SaveEditAsync" disabled="@_busy">保存</button>
+                        <button class="btn btn-outline-secondary ms-2" @onclick="CancelEdit" disabled="@_busy">取消</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_rows is null)
+    {
+        <p>加载中…</p>
+    }
+    else if (_rows.Count == 0)
+    {
+        <p class="text-muted">暂无商品，请在上方添加。</p>
+    }
+    else
+    {
+        <table class="table table-striped table-sm align-middle">
+            <thead>
+            <tr>
+                <th>编码</th>
+                <th>名称</th>
+                <th class="text-end">单价</th>
+                <th class="text-end">成本</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in _rows)
+            {
+                <tr>
+                    <td>@p.Code</td>
+                    <td>@p.Name</td>
+                    <td class="text-end">@p.UnitPrice.ToString("0.##")</td>
+                    <td class="text-end">@((p.UnitCost is null) ? "-" : p.UnitCost.Value.ToString("0.##"))</td>
+                    <td class="text-nowrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(p)">编辑</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-1" @onclick="() => DeleteAsync(p.Id)">删除</button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+@code {
+    private List<ProductDto>? _rows;
+    private string? _error;
+    private bool _busy;
+
+    private long? _editingId;
+
+    private string _code = "";
+    private string _name = "";
+    private decimal _unitPrice;
+    private string? _unitCostStr;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _error = null;
+        try
+        {
+            var envelope = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<ProductDto>>>("api/products");
+            _rows = envelope?.Success == true && envelope.Data is not null
+                ? envelope.Data
+                : new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _rows = new();
+        }
+    }
+
+    private void StartEdit(ProductDto p)
+    {
+        _editingId = p.Id;
+        _code = p.Code;
+        _name = p.Name;
+        _unitPrice = p.UnitPrice;
+        _unitCostStr = p.UnitCost?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private void CancelEdit()
+    {
+        _editingId = null;
+        _code = "";
+        _name = "";
+        _unitPrice = 0;
+        _unitCostStr = null;
+    }
+
+    private decimal? ParseOptionalCost()
+    {
+        if (string.IsNullOrWhiteSpace(_unitCostStr))
+            return null;
+        return decimal.TryParse(_unitCostStr, System.Globalization.CultureInfo.InvariantCulture, out var c) ? c : null;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var payload = new ProductCreateDto(_code.Trim(), _name.Trim(), _unitPrice, ParseOptionalCost());
+            var resp = await Http.PostAsJsonAsync("api/products", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            CancelEdit();
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_busy || _editingId is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var payload = new ProductUpdateDto(_code.Trim(), _name.Trim(), _unitPrice, ParseOptionalCost());
+            var resp = await Http.PutAsJsonAsync($"api/products/{_editingId}", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            CancelEdit();
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        if (_busy) return;
+        if (!await JS.InvokeAsync<bool>("confirm", "确认删除该商品？"))
+            return;
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/products/{id}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            if (_editingId == id)
+                CancelEdit();
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

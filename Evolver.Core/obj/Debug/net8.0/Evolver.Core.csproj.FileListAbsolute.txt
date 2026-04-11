@@ -1,0 +1,12 @@
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\bin\Debug\net8.0\Evolver.Core.deps.json
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\bin\Debug\net8.0\Evolver.Core.dll
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\bin\Debug\net8.0\Evolver.Core.pdb
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.csproj.AssemblyReference.cache
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.AssemblyInfoInputs.cache
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.AssemblyInfo.cs
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.csproj.CoreCompileInputs.cache
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.dll
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\refint\Evolver.Core.dll
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\Evolver.Core.pdb
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Core\obj\Debug\net8.0\ref\Evolver.Core.dll

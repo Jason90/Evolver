@@ -1,0 +1,123 @@
+@page "/settings/data-dictionary"
+@inject HttpClient Http
+
+<PageTitle>数据字典</PageTitle>
+
+<h1>数据字典</h1>
+<p class="text-muted">系统设置 · 字典项维护。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <label class="form-label">分类 CategoryCode</label>
+        <input class="form-control" @bind="_dictCategoryFilter" @bind:event="oninput" />
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-primary" @onclick="LoadDictAsync" disabled="@_busy">刷新</button>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">新增 / 更新字典项（按 CategoryCode + ItemCode 唯一）</div>
+    <div class="card-body row g-2">
+        <div class="col-md-2"><label class="form-label">CategoryCode</label><input class="form-control" @bind="_dCat" /></div>
+        <div class="col-md-2"><label class="form-label">ItemCode</label><input class="form-control" @bind="_dItem" /></div>
+        <div class="col-md-3"><label class="form-label">DisplayName</label><input class="form-control" @bind="_dName" /></div>
+        <div class="col-md-2"><label class="form-label">SortOrder</label><input class="form-control" type="number" @bind="_dSort" /></div>
+        <div class="col-md-2"><label class="form-label">ItemValue</label><input class="form-control" @bind="_dVal" /></div>
+        <div class="col-md-1 d-flex align-items-end"><label class="form-check-label"><input type="checkbox" class="form-check-input" @bind="_dActive" /> 启用</label></div>
+        <div class="col-12"><button class="btn btn-primary" @onclick="SaveDictAsync" disabled="@_busy">保存</button></div>
+    </div>
+</div>
+
+@if (_dictItems is null)
+{
+    <p>加载中…</p>
+}
+else
+{
+    <table class="table table-sm table-striped">
+        <thead>
+        <tr><th>Id</th><th>Category</th><th>Code</th><th>名称</th><th>排序</th><th>启用</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var d in _dictItems)
+        {
+            <tr>
+                <td>@d.Id</td>
+                <td>@d.CategoryCode</td>
+                <td>@d.ItemCode</td>
+                <td>@d.DisplayName</td>
+                <td>@d.SortOrder</td>
+                <td>@d.IsActive</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string? _error;
+    private bool _busy;
+
+    private List<DataDictionaryItemDto>? _dictItems;
+    private string _dictCategoryFilter = "";
+    private string _dCat = "ProductUnit";
+    private string _dItem = "pcs";
+    private string _dName = "件";
+    private string? _dVal;
+    private int _dSort;
+    private bool _dActive = true;
+
+    protected override async Task OnInitializedAsync() => await LoadDictAsync();
+
+    private async Task LoadDictAsync()
+    {
+        try
+        {
+            var url = string.IsNullOrWhiteSpace(_dictCategoryFilter)
+                ? "api/data-dictionary/items"
+                : $"api/data-dictionary/items?category={Uri.EscapeDataString(_dictCategoryFilter.Trim())}";
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<DataDictionaryItemDto>>>(url);
+            _dictItems = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _dictItems = new();
+        }
+    }
+
+    private async Task SaveDictAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var body = new UpsertDataDictionaryItemDto(_dCat.Trim(), _dItem.Trim(), _dName.Trim(), _dVal, _dSort, _dActive);
+            var resp = await Http.PostAsJsonAsync("api/data-dictionary/items", body);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await LoadDictAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

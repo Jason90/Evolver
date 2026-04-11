@@ -1,0 +1,132 @@
+@page "/settings/organizations"
+@inject HttpClient Http
+
+<PageTitle>组织架构</PageTitle>
+
+<h1>组织架构</h1>
+<p class="text-muted">系统设置 · 组织树与新增节点。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">新增组织节点</div>
+    <div class="card-body row g-2">
+        <div class="col-md-4">
+            <label class="form-label">名称</label>
+            <input class="form-control" @bind="_orgName" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">类型（可选）</label>
+            <input class="form-control" @bind="_orgType" placeholder="Headquarters / Team" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">父级 Id（空=根）</label>
+            <input class="form-control" @bind="_orgParentIdStr" />
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" @onclick="CreateOrgAsync" disabled="@_busy">保存</button>
+        </div>
+    </div>
+</div>
+
+@if (_orgTree is null)
+{
+    <p>加载中…</p>
+}
+else if (_orgTree.Count == 0)
+{
+    <p class="text-muted">暂无组织数据。</p>
+}
+else
+{
+    <ul class="list-unstyled">
+        @foreach (var (node, depth) in FlattenOrgTree(_orgTree))
+        {
+            <li class="mb-1" style="padding-left: @(depth * 1.25)rem">• @node.Name <small class="text-muted">(@(node.OrgType ?? "-")) Id=@node.Id</small></li>
+        }
+    </ul>
+}
+
+@code {
+    private string? _error;
+    private bool _busy;
+
+    private List<OrganizationTreeNodeDto>? _orgTree;
+    private string _orgName = "";
+    private string? _orgType;
+    private string? _orgParentIdStr;
+
+    protected override async Task OnInitializedAsync() => await LoadOrgAsync();
+
+    private async Task LoadOrgAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<OrganizationTreeNodeDto>>>("api/organizations/tree");
+            _orgTree = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _orgTree = new();
+        }
+    }
+
+    private async Task CreateOrgAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            long? pid = null;
+            if (!string.IsNullOrWhiteSpace(_orgParentIdStr) && long.TryParse(_orgParentIdStr, out var p))
+                pid = p;
+
+            var body = new CreateOrganizationDto(_orgName.Trim(), pid, string.IsNullOrWhiteSpace(_orgType) ? null : _orgType.Trim());
+            var resp = await Http.PostAsJsonAsync("api/organizations", body);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            _orgName = "";
+            _orgType = null;
+            _orgParentIdStr = null;
+            await LoadOrgAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static IEnumerable<(OrganizationTreeNodeDto node, int depth)> FlattenOrgTree(IEnumerable<OrganizationTreeNodeDto> roots)
+    {
+        foreach (var r in roots)
+        {
+            foreach (var x in Walk(r, 0))
+                yield return x;
+        }
+    }
+
+    private static IEnumerable<(OrganizationTreeNodeDto node, int depth)> Walk(OrganizationTreeNodeDto n, int depth)
+    {
+        yield return (n, depth);
+        foreach (var c in n.Children)
+        {
+            foreach (var x in Walk(c, depth + 1))
+                yield return x;
+        }
+    }
+}

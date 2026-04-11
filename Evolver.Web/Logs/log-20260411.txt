@@ -1,0 +1,753 @@
+2026-04-11 09:28:42.373 +12:00 [INF] HTTP GET /api/products responded 401 in 21.0229 ms
+2026-04-11 09:28:43.935 +12:00 [INF] HTTP GET /api/products responded 401 in 6.7765 ms
+2026-04-11 09:30:49.160 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 09:30:49.210 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 09:30:49.211 +12:00 [INF] Hosting environment: Development
+2026-04-11 09:30:49.211 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 09:32:07.648 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 09:32:07.788 +12:00 [INF] HTTP GET / responded 404 in 215.0324 ms
+2026-04-11 09:32:17.086 +12:00 [INF] HTTP GET /swagger responded 301 in 5.9311 ms
+2026-04-11 09:32:17.523 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 423.9892 ms
+2026-04-11 09:32:17.636 +12:00 [INF] HTTP GET /swagger/swagger-ui-standalone-preset.js responded 200 in 33.5788 ms
+2026-04-11 09:32:17.636 +12:00 [INF] HTTP GET /swagger/swagger-ui.css responded 200 in 51.5147 ms
+2026-04-11 09:32:17.682 +12:00 [INF] HTTP GET /swagger/swagger-ui-bundle.js responded 200 in 77.9676 ms
+2026-04-11 09:32:18.730 +12:00 [INF] HTTP GET /swagger/favicon-32x32.png responded 200 in 0.6163 ms
+2026-04-11 09:32:18.873 +12:00 [ERR] HTTP GET /swagger/v1/swagger.json responded 500 in 184.6120 ms
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-04-11 09:32:18.894 +12:00 [ERR] An unhandled exception has occurred while executing the request.
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+2026-04-11 09:33:01.189 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 1.5563 ms
+2026-04-11 09:33:02.488 +12:00 [ERR] HTTP GET /swagger/v1/swagger.json responded 500 in 10.5050 ms
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-04-11 09:33:02.489 +12:00 [ERR] An unhandled exception has occurred while executing the request.
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+2026-04-11 09:38:48.396 +12:00 [INF] Application is shutting down...
+2026-04-11 09:55:53.348 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 09:55:53.396 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 09:55:53.397 +12:00 [INF] Hosting environment: Development
+2026-04-11 09:55:53.397 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 09:56:37.395 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 512.9300 ms
+2026-04-11 09:56:38.872 +12:00 [ERR] HTTP GET /swagger/v1/swagger.json responded 500 in 208.5872 ms
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-04-11 09:56:38.903 +12:00 [ERR] An unhandled exception has occurred while executing the request.
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+2026-04-11 09:59:58.532 +12:00 [INF] Application is shutting down...
+2026-04-11 10:00:11.498 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 10:00:11.534 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 10:00:11.535 +12:00 [INF] Hosting environment: Development
+2026-04-11 10:00:11.535 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 10:00:25.961 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 527.3905 ms
+2026-04-11 10:00:26.642 +12:00 [ERR] HTTP GET /swagger/v1/swagger.json responded 500 in 243.6255 ms
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-04-11 10:00:26.673 +12:00 [ERR] An unhandled exception has occurred while executing the request.
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+2026-04-11 10:03:27.328 +12:00 [INF] Application is shutting down...
+2026-04-11 10:03:35.267 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 10:03:35.311 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 10:03:35.312 +12:00 [INF] Hosting environment: Development
+2026-04-11 10:03:35.312 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 10:03:36.674 +12:00 [INF] Application is shutting down...
+2026-04-11 10:03:46.889 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 10:03:46.974 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 10:03:46.976 +12:00 [INF] Hosting environment: Development
+2026-04-11 10:03:46.976 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 10:03:49.938 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 486.6003 ms
+2026-04-11 10:03:51.410 +12:00 [ERR] HTTP GET /swagger/v1/swagger.json responded 500 in 202.2957 ms
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+2026-04-11 10:03:51.451 +12:00 [ERR] An unhandled exception has occurred while executing the request.
+Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Failed to generate Operation for action - Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api). See inner exception
+ ---> Swashbuckle.AspNetCore.SwaggerGen.SwaggerGeneratorException: Error reading parameter(s) for action Evolver.Api.Controllers.ImportController.ImportXlsx (Evolver.Api) as [FromForm] attribute used with IFormFile. Please refer to https://github.com/domaindrivendev/Swashbuckle.AspNetCore#handle-forms-and-file-uploads for more information
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateParameters(ApiDescription apiDescription, SchemaRepository schemaRespository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   --- End of inner exception stack trace ---
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperation(ApiDescription apiDescription, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GenerateOperations(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GeneratePaths(IEnumerable`1 apiDescriptions, SchemaRepository schemaRepository)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerDocumentWithoutFilters(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenerator.GetSwaggerAsync(String documentName, String host, String basePath)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Serilog.AspNetCore.RequestLoggingMiddleware.Invoke(HttpContext httpContext)
+   at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+2026-04-11 10:06:18.345 +12:00 [INF] Application is shutting down...
+2026-04-11 10:06:32.733 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 10:06:32.784 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 10:06:32.785 +12:00 [INF] Hosting environment: Development
+2026-04-11 10:06:32.785 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 10:06:33.170 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 183.2673 ms
+2026-04-11 10:06:34.722 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 425.5218 ms
+2026-04-11 10:07:06.900 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 10:07:07.091 +12:00 [INF] HTTP GET /api/products responded 401 in 212.0244 ms
+2026-04-11 10:36:45.559 +12:00 [ERR] Failed executing DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Markets" (
+    "Id" bigint NOT NULL CONSTRAINT "PK_Markets" PRIMARY KEY,
+    "Name" nvarchar(450) NOT NULL,
+    "TenantId" int NOT NULL,
+    "OrgId" int NOT NULL,
+    "IsDeleted" bit NOT NULL,
+    "CreateBy" int NULL,
+    "CreateTime" datetime2 NOT NULL,
+    "UpdateBy" int NULL,
+    "UpdateTime" datetime2 NULL
+);
+2026-04-11 10:45:18.333 +12:00 [ERR] Failed executing DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Organizations" (
+    "Id" bigint NOT NULL CONSTRAINT "PK_Organizations" PRIMARY KEY,
+    "ParentId" bigint NULL,
+    "Name" nvarchar(450) NOT NULL,
+    "OrgType" nvarchar(max) NULL,
+    "TenantId" int NOT NULL,
+    "OrgId" int NOT NULL,
+    "IsDeleted" bit NOT NULL,
+    "CreateBy" int NULL,
+    "CreateTime" datetime2 NOT NULL,
+    "UpdateBy" int NULL,
+    "UpdateTime" datetime2 NULL,
+    CONSTRAINT "FK_Organizations_Organizations_ParentId" FOREIGN KEY ("ParentId") REFERENCES "Organizations" ("Id")
+);
+2026-04-11 10:50:20.853 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 10:50:20.878 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 10:50:20.879 +12:00 [INF] Hosting environment: Development
+2026-04-11 10:50:20.879 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 10:50:23.373 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 239.6495 ms
+2026-04-11 10:50:24.375 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 205.7352 ms
+2026-04-11 10:52:58.012 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 4.1070 ms
+2026-04-11 10:52:58.020 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 10:52:58.474 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 458.7240 ms
+2026-04-11 10:53:05.810 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 1.6389 ms
+2026-04-11 10:53:06.109 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 295.6220 ms
+2026-04-11 10:53:08.830 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.2134 ms
+2026-04-11 10:53:08.916 +12:00 [INF] HTTP GET /api/products responded 200 in 79.7119 ms
+2026-04-11 10:53:22.298 +12:00 [INF] HTTP OPTIONS /api/menu-intelligence responded 204 in 0.1792 ms
+2026-04-11 10:53:22.377 +12:00 [INF] HTTP GET /api/menu-intelligence responded 200 in 74.9503 ms
+2026-04-11 10:53:28.781 +12:00 [INF] HTTP OPTIONS /sample-data/weather.json responded 204 in 0.6171 ms
+2026-04-11 10:53:28.788 +12:00 [INF] HTTP GET /sample-data/weather.json responded 404 in 1.5232 ms
+2026-04-11 10:53:29.946 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.1167 ms
+2026-04-11 10:53:29.956 +12:00 [INF] HTTP GET /api/products responded 200 in 7.1216 ms
+2026-04-11 10:53:32.949 +12:00 [INF] HTTP GET /api/products responded 200 in 3.7419 ms
+2026-04-11 10:56:23.196 +12:00 [INF] HTTP GET /api/products responded 401 in 4.9430 ms
+2026-04-11 10:56:28.669 +12:00 [INF] HTTP GET /api/products responded 401 in 0.7738 ms
+2026-04-11 10:56:29.951 +12:00 [INF] HTTP GET /api/products responded 401 in 0.7009 ms
+2026-04-11 10:56:31.851 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 0.0819 ms
+2026-04-11 10:56:31.978 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 125.0228 ms
+2026-04-11 10:56:32.569 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0927 ms
+2026-04-11 10:56:32.573 +12:00 [INF] HTTP GET /api/products responded 200 in 2.1255 ms
+2026-04-11 11:11:20.754 +12:00 [INF] HTTP GET /api/products responded 401 in 1.2521 ms
+2026-04-11 11:11:25.683 +12:00 [INF] HTTP GET /api/products responded 401 in 0.4652 ms
+2026-04-11 11:11:26.291 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6350 ms
+2026-04-11 11:11:26.784 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6365 ms
+2026-04-11 11:11:27.140 +12:00 [INF] HTTP GET /api/products responded 401 in 0.4024 ms
+2026-04-11 11:11:27.356 +12:00 [INF] HTTP GET /api/products responded 401 in 0.4871 ms
+2026-04-11 11:11:27.576 +12:00 [INF] HTTP GET /api/products responded 401 in 0.5199 ms
+2026-04-11 11:13:13.925 +12:00 [INF] HTTP POST /api/auth/login responded 401 in 242.9842 ms
+2026-04-11 11:15:33.911 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 136.3024 ms
+2026-04-11 11:16:11.614 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6634 ms
+2026-04-11 11:18:25.674 +12:00 [INF] HTTP GET /api/products responded 401 in 1.0077 ms
+2026-04-11 11:18:30.259 +12:00 [INF] HTTP GET /api/products responded 401 in 0.7846 ms
+2026-04-11 11:18:30.903 +12:00 [INF] HTTP GET /api/products responded 401 in 0.4615 ms
+2026-04-11 11:18:35.051 +12:00 [INF] HTTP GET /api/products responded 401 in 0.4644 ms
+2026-04-11 11:20:05.123 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6390 ms
+2026-04-11 11:20:10.684 +12:00 [INF] HTTP GET /api/products responded 401 in 0.7732 ms
+2026-04-11 11:20:11.148 +12:00 [INF] HTTP GET /api/products responded 401 in 0.3176 ms
+2026-04-11 11:20:11.582 +12:00 [INF] HTTP GET /api/products responded 401 in 0.9945 ms
+2026-04-11 11:20:11.790 +12:00 [INF] HTTP GET /api/products responded 401 in 0.8354 ms
+2026-04-11 11:21:14.104 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 2.2324 ms
+2026-04-11 11:21:14.813 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 17.4504 ms
+2026-04-11 11:21:36.174 +12:00 [INF] HTTP GET /api/products responded 401 in 0.4702 ms
+2026-04-11 11:25:36.638 +12:00 [INF] HTTP GET /api/products responded 200 in 17.5427 ms
+2026-04-11 11:27:13.411 +12:00 [INF] HTTP GET /api/products responded 401 in 0.3779 ms
+2026-04-11 11:27:20.510 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6547 ms
+2026-04-11 11:27:21.154 +12:00 [INF] HTTP GET /api/products responded 401 in 0.2802 ms
+2026-04-11 11:27:26.542 +12:00 [INF] HTTP GET /api/roles responded 401 in 0.3929 ms
+2026-04-11 11:27:57.817 +12:00 [INF] HTTP POST /api/auth/login responded 401 in 178.4143 ms
+2026-04-11 11:28:03.760 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 169.4643 ms
+2026-04-11 11:29:04.814 +12:00 [INF] HTTP GET /api/products responded 401 in 0.8723 ms
+2026-04-11 11:29:34.530 +12:00 [INF] HTTP POST /api/roles responded 401 in 0.9839 ms
+2026-04-11 12:28:43.530 +12:00 [INF] Application is shutting down...
+2026-04-11 12:33:30.683 +12:00 [ERR] Failed executing DbCommand (3ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Markets" (
+    "Id" bigint NOT NULL CONSTRAINT "PK_Markets" PRIMARY KEY,
+    "Name" nvarchar(450) NOT NULL,
+    "TenantId" int NOT NULL,
+    "OrgId" int NOT NULL,
+    "IsDeleted" bit NOT NULL,
+    "CreateBy" int NULL,
+    "CreateTime" datetime2 NOT NULL,
+    "UpdateBy" int NULL,
+    "UpdateTime" datetime2 NULL
+);
+2026-04-11 12:33:57.955 +12:00 [ERR] Failed executing DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Organizations" (
+    "Id" bigint NOT NULL CONSTRAINT "PK_Organizations" PRIMARY KEY,
+    "ParentId" bigint NULL,
+    "Name" nvarchar(450) NOT NULL,
+    "OrgType" nvarchar(max) NULL,
+    "TenantId" int NOT NULL,
+    "OrgId" int NOT NULL,
+    "IsDeleted" bit NOT NULL,
+    "CreateBy" int NULL,
+    "CreateTime" datetime2 NOT NULL,
+    "UpdateBy" int NULL,
+    "UpdateTime" datetime2 NULL,
+    CONSTRAINT "FK_Organizations_Organizations_ParentId" FOREIGN KEY ("ParentId") REFERENCES "Organizations" ("Id")
+);
+2026-04-11 12:37:30.183 +12:00 [ERR] Failed executing DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "AspNetRoles" (
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_AspNetRoles" PRIMARY KEY AUTOINCREMENT,
+    "TenantId" INTEGER NOT NULL,
+    "OrgId" INTEGER NOT NULL,
+    "IsDeleted" INTEGER NOT NULL,
+    "CreateBy" INTEGER NULL,
+    "CreateTime" TEXT NOT NULL,
+    "UpdateBy" INTEGER NULL,
+    "UpdateTime" TEXT NULL,
+    "Name" TEXT NULL,
+    "NormalizedName" TEXT NULL,
+    "ConcurrencyStamp" TEXT NULL
+);
+2026-04-11 12:38:15.609 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 12:38:15.630 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 12:38:15.631 +12:00 [INF] Hosting environment: Development
+2026-04-11 12:38:15.631 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Api
+2026-04-11 12:49:07.249 +12:00 [ERR] Hosting failed to start
+System.IO.IOException: Failed to bind to address http://127.0.0.1:5212: address already in use.
+ ---> Microsoft.AspNetCore.Connections.AddressInUseException: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+ ---> System.Net.Sockets.SocketException (10048): Only one usage of each socket address (protocol/network address/port) is normally permitted.
+   at System.Net.Sockets.Socket.UpdateStatusAfterSocketErrorAndThrowException(SocketError error, Boolean disconnectOnFailure, String callerName)
+   at System.Net.Sockets.Socket.DoBind(EndPoint endPointSnapshot, SocketAddress socketAddress)
+   at System.Net.Sockets.Socket.Bind(EndPoint localEP)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportOptions.CreateDefaultBoundListenSocket(EndPoint endpoint)
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketConnectionListener.Bind()
+   at Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.SocketTransportFactory.BindAsync(EndPoint endpoint, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure.TransportManager.BindAsync(EndPoint endPoint, ConnectionDelegate connectionDelegate, EndpointConfig endpointConfig, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.<>c__DisplayClass28_0`1.<<StartAsync>g__OnBind|0>d.MoveNext()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindEndpointAsync(ListenOptions endpoint, AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.LocalhostListenOptions.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.AddressesStrategy.BindAsync(AddressBindContext context, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.Internal.AddressBinder.BindAsync(ListenOptions[] listenOptions, AddressBindContext context, Func`2 useHttps, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.BindAsync(CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerImpl.StartAsync[TContext](IHttpApplication`1 application, CancellationToken cancellationToken)
+   at Microsoft.AspNetCore.Hosting.GenericWebHostService.StartAsync(CancellationToken cancellationToken)
+   at Microsoft.Extensions.Hosting.Internal.Host.<StartAsync>b__15_1(IHostedService service, CancellationToken token)
+   at Microsoft.Extensions.Hosting.Internal.Host.ForeachService[T](IEnumerable`1 services, CancellationToken token, Boolean concurrent, Boolean abortOnFirstException, List`1 exceptions, Func`3 operation)
+2026-04-11 12:51:01.571 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 12:51:01.610 +12:00 [INF] HTTP GET / responded 404 in 67.3336 ms
+2026-04-11 12:51:07.963 +12:00 [INF] HTTP GET /swagger responded 301 in 2.2259 ms
+2026-04-11 12:51:08.123 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 153.5391 ms
+2026-04-11 12:51:08.217 +12:00 [INF] HTTP GET /swagger/swagger-ui.css responded 200 in 21.0450 ms
+2026-04-11 12:51:08.233 +12:00 [INF] HTTP GET /swagger/swagger-ui-standalone-preset.js responded 200 in 32.7205 ms
+2026-04-11 12:51:08.290 +12:00 [INF] HTTP GET /swagger/swagger-ui-bundle.js responded 200 in 90.2417 ms
+2026-04-11 12:51:08.872 +12:00 [INF] HTTP GET /swagger/favicon-32x32.png responded 200 in 0.4631 ms
+2026-04-11 12:51:09.018 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 169.8421 ms
+2026-04-11 12:51:27.601 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 406.1241 ms
+2026-04-11 12:52:02.175 +12:00 [INF] HTTP GET /api/products responded 401 in 21.9605 ms
+2026-04-11 12:52:54.993 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 1.5944 ms
+2026-04-11 12:52:55.188 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 193.7267 ms
+2026-04-11 12:52:56.099 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.2760 ms
+2026-04-11 12:52:56.234 +12:00 [INF] HTTP GET /api/products responded 200 in 126.0539 ms
+2026-04-11 12:53:44.743 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.6059 ms
+2026-04-11 12:53:44.836 +12:00 [INF] HTTP POST /api/products responded 201 in 89.7417 ms
+2026-04-11 12:53:44.847 +12:00 [INF] HTTP GET /api/products responded 200 in 3.8041 ms
+2026-04-11 12:53:47.378 +12:00 [INF] HTTP OPTIONS /api/products/3 responded 204 in 0.1943 ms
+2026-04-11 12:53:47.431 +12:00 [INF] HTTP DELETE /api/products/3 responded 204 in 47.2314 ms
+2026-04-11 12:53:47.444 +12:00 [INF] HTTP GET /api/products responded 200 in 3.3105 ms
+2026-04-11 12:53:49.466 +12:00 [INF] HTTP GET /api/products responded 200 in 3.1203 ms
+2026-04-11 14:25:39.995 +12:00 [INF] Now listening on: http://127.0.0.1:5077
+2026-04-11 14:25:40.018 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 14:25:40.019 +12:00 [INF] Hosting environment: Development
+2026-04-11 14:25:40.019 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Web
+2026-04-11 14:26:14.722 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 190.1562 ms
+2026-04-11 14:45:06.588 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 14:45:06.613 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 14:45:06.614 +12:00 [INF] Hosting environment: Development
+2026-04-11 14:45:06.614 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Web
+2026-04-11 14:47:19.223 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 172.3977 ms
+2026-04-11 14:47:20.410 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 176.2540 ms
+2026-04-11 14:47:32.144 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 14:47:32.847 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 717.0408 ms
+2026-04-11 14:48:01.261 +12:00 [INF] HTTP GET /api/products responded 401 in 15.7141 ms
+2026-04-11 14:52:28.169 +12:00 [INF] HTTP GET /api/products responded 401 in 8.0354 ms
+2026-04-11 14:52:33.900 +12:00 [INF] HTTP GET /api/products responded 401 in 13.2778 ms
+2026-04-11 14:52:34.537 +12:00 [INF] HTTP GET /api/products responded 401 in 0.9442 ms
+2026-04-11 14:52:35.058 +12:00 [INF] HTTP GET /api/products responded 401 in 1.1492 ms
+2026-04-11 14:52:43.994 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 248.7116 ms
+2026-04-11 14:53:10.125 +12:00 [INF] HTTP GET /api/products responded 401 in 0.5643 ms
+2026-04-11 14:57:46.231 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6741 ms
+2026-04-11 14:57:52.194 +12:00 [INF] HTTP GET /api/products responded 401 in 0.5901 ms
+2026-04-11 15:06:30.407 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 111.8088 ms
+2026-04-11 15:06:30.678 +12:00 [INF] HTTP GET /api/products responded 200 in 77.9315 ms
+2026-04-11 15:08:06.740 +12:00 [INF] HTTP GET /api/products responded 401 in 0.6415 ms
+2026-04-11 15:12:19.077 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 0.7317 ms
+2026-04-11 15:12:19.828 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 21.2109 ms
+2026-04-11 15:12:33.893 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 0.5713 ms
+2026-04-11 15:12:34.119 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 14.1865 ms
+2026-04-11 15:13:30.401 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 141.1901 ms
+2026-04-11 15:14:34.721 +12:00 [INF] HTTP GET /api/products responded 401 in 2.6404 ms
+2026-04-11 15:29:06.196 +12:00 [INF] HTTP GET /api/products responded 200 in 13.0542 ms
+2026-04-11 15:34:16.900 +12:00 [INF] Application is shutting down...
+2026-04-11 15:39:18.437 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 15:39:18.469 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 15:39:18.470 +12:00 [INF] Hosting environment: Development
+2026-04-11 15:39:18.470 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Web
+2026-04-11 15:39:38.992 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 229.9523 ms
+2026-04-11 15:39:39.898 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 176.5839 ms
+2026-04-11 15:39:58.995 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 15:39:59.592 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 603.5497 ms
+2026-04-11 15:40:57.343 +12:00 [INF] HTTP GET /api/products responded 200 in 315.4757 ms
+2026-04-11 15:44:35.058 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 2.8168 ms
+2026-04-11 15:44:35.072 +12:00 [INF] HTTP GET /api/products responded 200 in 11.6319 ms
+2026-04-11 15:46:01.378 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 0.2153 ms
+2026-04-11 15:46:01.495 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 115.0657 ms
+2026-04-11 16:35:29.761 +12:00 [INF] Now listening on: http://localhost:5212
+2026-04-11 16:35:29.783 +12:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-04-11 16:35:29.783 +12:00 [INF] Hosting environment: Development
+2026-04-11 16:35:29.783 +12:00 [INF] Content root path: C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Web
+2026-04-11 16:35:36.338 +12:00 [INF] HTTP GET /swagger/index.html responded 200 in 267.9312 ms
+2026-04-11 16:35:38.275 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 307.9796 ms
+2026-04-11 16:36:13.188 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 4.1163 ms
+2026-04-11 16:36:13.196 +12:00 [WRN] Failed to determine the https port for redirect.
+2026-04-11 16:36:13.627 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 435.0327 ms
+2026-04-11 16:50:42.751 +12:00 [INF] HTTP OPTIONS /api/auth/login responded 204 in 0.6486 ms
+2026-04-11 16:50:43.049 +12:00 [INF] HTTP POST /api/auth/login responded 200 in 295.7768 ms
+2026-04-11 16:54:18.204 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1197 ms
+2026-04-11 16:54:18.350 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 143.8523 ms
+2026-04-11 16:54:18.411 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0880 ms
+2026-04-11 16:54:18.451 +12:00 [INF] HTTP GET /api/users responded 200 in 37.6763 ms
+2026-04-11 16:54:18.472 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.1143 ms
+2026-04-11 16:54:18.498 +12:00 [INF] HTTP GET /api/roles responded 200 in 24.3953 ms
+2026-04-11 16:54:18.516 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.1207 ms
+2026-04-11 16:54:18.540 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 22.2239 ms
+2026-04-11 16:56:37.544 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1319 ms
+2026-04-11 16:56:37.549 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.9974 ms
+2026-04-11 16:56:37.615 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0840 ms
+2026-04-11 16:56:37.619 +12:00 [INF] HTTP GET /api/users responded 200 in 2.9005 ms
+2026-04-11 16:56:37.640 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0882 ms
+2026-04-11 16:56:37.649 +12:00 [INF] HTTP GET /api/roles responded 200 in 6.7838 ms
+2026-04-11 16:56:37.666 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.1045 ms
+2026-04-11 16:56:37.670 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.4228 ms
+2026-04-11 16:56:39.408 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.4637 ms
+2026-04-11 16:56:39.434 +12:00 [INF] HTTP GET /api/users responded 200 in 3.2219 ms
+2026-04-11 16:56:39.441 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.4673 ms
+2026-04-11 16:56:39.448 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.3987 ms
+2026-04-11 16:56:52.681 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.2633 ms
+2026-04-11 16:56:52.687 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.5418 ms
+2026-04-11 16:56:52.750 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0912 ms
+2026-04-11 16:56:52.755 +12:00 [INF] HTTP GET /api/users responded 200 in 2.9382 ms
+2026-04-11 16:56:52.776 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0893 ms
+2026-04-11 16:56:52.779 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.6760 ms
+2026-04-11 16:56:52.797 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.1904 ms
+2026-04-11 16:56:52.801 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.1400 ms
+2026-04-11 16:56:55.701 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.1082 ms
+2026-04-11 16:56:55.745 +12:00 [INF] HTTP GET /api/products responded 200 in 41.1651 ms
+2026-04-11 16:56:56.943 +12:00 [INF] HTTP GET /api/products responded 200 in 2.0706 ms
+2026-04-11 16:56:59.397 +12:00 [INF] HTTP GET /api/products responded 200 in 2.5601 ms
+2026-04-11 16:57:09.101 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.2489 ms
+2026-04-11 16:57:09.109 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 4.8987 ms
+2026-04-11 16:57:09.157 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0897 ms
+2026-04-11 16:57:09.161 +12:00 [INF] HTTP GET /api/users responded 200 in 2.6939 ms
+2026-04-11 16:57:09.167 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0728 ms
+2026-04-11 16:57:09.172 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.5724 ms
+2026-04-11 16:57:09.176 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0658 ms
+2026-04-11 16:57:09.180 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.5739 ms
+2026-04-11 16:57:10.576 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.1664 ms
+2026-04-11 16:57:10.596 +12:00 [INF] HTTP GET /api/users responded 200 in 2.5950 ms
+2026-04-11 16:57:10.603 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.7916 ms
+2026-04-11 16:57:10.611 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.2802 ms
+2026-04-11 16:57:12.441 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.9980 ms
+2026-04-11 16:57:12.466 +12:00 [INF] HTTP GET /api/users responded 200 in 3.6896 ms
+2026-04-11 16:57:12.474 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.8285 ms
+2026-04-11 16:57:12.481 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.1993 ms
+2026-04-11 16:57:17.606 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0945 ms
+2026-04-11 16:57:17.614 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 4.4841 ms
+2026-04-11 16:57:17.634 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0599 ms
+2026-04-11 16:57:17.639 +12:00 [INF] HTTP GET /api/users responded 200 in 3.4264 ms
+2026-04-11 16:57:17.643 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0583 ms
+2026-04-11 16:57:17.647 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.1995 ms
+2026-04-11 16:57:17.652 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0623 ms
+2026-04-11 16:57:17.655 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.2175 ms
+2026-04-11 16:57:19.954 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0545 ms
+2026-04-11 16:57:19.958 +12:00 [INF] HTTP GET /api/products responded 200 in 1.9697 ms
+2026-04-11 16:58:44.901 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1210 ms
+2026-04-11 16:58:44.916 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 9.1653 ms
+2026-04-11 16:58:44.951 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0496 ms
+2026-04-11 16:58:44.956 +12:00 [INF] HTTP GET /api/users responded 200 in 2.5176 ms
+2026-04-11 16:58:44.961 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0468 ms
+2026-04-11 16:58:44.964 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.8415 ms
+2026-04-11 16:58:44.968 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0614 ms
+2026-04-11 16:58:44.972 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.1873 ms
+2026-04-11 16:58:50.864 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0767 ms
+2026-04-11 16:58:50.869 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.4804 ms
+2026-04-11 16:58:50.915 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0817 ms
+2026-04-11 16:58:50.922 +12:00 [INF] HTTP GET /api/users responded 200 in 3.4671 ms
+2026-04-11 16:58:50.927 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0815 ms
+2026-04-11 16:58:50.931 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.5339 ms
+2026-04-11 16:58:50.935 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0452 ms
+2026-04-11 16:58:50.938 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.4542 ms
+2026-04-11 17:02:20.641 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.1302 ms
+2026-04-11 17:02:20.672 +12:00 [INF] HTTP GET /api/products responded 200 in 24.5797 ms
+2026-04-11 17:02:23.677 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1855 ms
+2026-04-11 17:02:23.687 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 4.7990 ms
+2026-04-11 17:02:23.713 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0458 ms
+2026-04-11 17:02:23.718 +12:00 [INF] HTTP GET /api/users responded 200 in 2.7456 ms
+2026-04-11 17:02:23.722 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0576 ms
+2026-04-11 17:02:23.726 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.1159 ms
+2026-04-11 17:02:23.731 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0438 ms
+2026-04-11 17:02:23.734 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.4709 ms
+2026-04-11 17:05:35.560 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0660 ms
+2026-04-11 17:05:35.565 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.2887 ms
+2026-04-11 17:05:35.581 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0529 ms
+2026-04-11 17:05:35.584 +12:00 [INF] HTTP GET /api/users responded 200 in 2.0357 ms
+2026-04-11 17:05:35.589 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0764 ms
+2026-04-11 17:05:35.593 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.9855 ms
+2026-04-11 17:05:35.599 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0497 ms
+2026-04-11 17:05:35.602 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.0090 ms
+2026-04-11 17:05:58.034 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0780 ms
+2026-04-11 17:05:58.044 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 4.9897 ms
+2026-04-11 17:05:58.089 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0433 ms
+2026-04-11 17:05:58.093 +12:00 [INF] HTTP GET /api/users responded 200 in 3.2760 ms
+2026-04-11 17:05:58.099 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0682 ms
+2026-04-11 17:05:58.102 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.4589 ms
+2026-04-11 17:05:58.109 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0636 ms
+2026-04-11 17:05:58.112 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.5384 ms
+2026-04-11 17:14:36.205 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0675 ms
+2026-04-11 17:14:36.232 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 21.6777 ms
+2026-04-11 17:14:36.351 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0983 ms
+2026-04-11 17:14:36.356 +12:00 [INF] HTTP GET /api/users responded 200 in 2.5419 ms
+2026-04-11 17:14:36.379 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0388 ms
+2026-04-11 17:14:36.384 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.3841 ms
+2026-04-11 17:14:36.443 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0396 ms
+2026-04-11 17:14:36.447 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.5355 ms
+2026-04-11 17:14:40.096 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.3816 ms
+2026-04-11 17:14:40.119 +12:00 [INF] HTTP GET /api/users responded 200 in 2.8204 ms
+2026-04-11 17:14:40.125 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.5957 ms
+2026-04-11 17:14:40.134 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.4836 ms
+2026-04-11 17:14:42.800 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0421 ms
+2026-04-11 17:14:42.804 +12:00 [INF] HTTP GET /api/products responded 200 in 1.5191 ms
+2026-04-11 17:15:08.186 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0748 ms
+2026-04-11 17:15:08.195 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 4.7417 ms
+2026-04-11 17:15:08.220 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0443 ms
+2026-04-11 17:15:08.224 +12:00 [INF] HTTP GET /api/users responded 200 in 2.3997 ms
+2026-04-11 17:15:08.229 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0508 ms
+2026-04-11 17:15:08.232 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.5505 ms
+2026-04-11 17:15:08.237 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0436 ms
+2026-04-11 17:15:08.239 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.2866 ms
+2026-04-11 17:18:30.692 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0439 ms
+2026-04-11 17:18:30.697 +12:00 [INF] HTTP GET /api/users responded 200 in 2.3074 ms
+2026-04-11 17:18:34.467 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0712 ms
+2026-04-11 17:18:34.472 +12:00 [INF] HTTP GET /api/roles responded 200 in 3.0373 ms
+2026-04-11 17:18:35.068 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0375 ms
+2026-04-11 17:18:35.100 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 30.3697 ms
+2026-04-11 17:18:35.574 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0377 ms
+2026-04-11 17:18:35.577 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.4287 ms
+2026-04-11 17:18:36.389 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.9670 ms
+2026-04-11 17:18:39.276 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.9768 ms
+2026-04-11 17:18:40.029 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0417 ms
+2026-04-11 17:18:40.033 +12:00 [INF] HTTP GET /api/users responded 200 in 1.6405 ms
+2026-04-11 17:18:40.997 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0397 ms
+2026-04-11 17:18:41.001 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.2781 ms
+2026-04-11 17:18:41.457 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0381 ms
+2026-04-11 17:18:41.461 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.4645 ms
+2026-04-11 17:18:42.301 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0585 ms
+2026-04-11 17:18:42.303 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.1454 ms
+2026-04-11 17:19:40.967 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1444 ms
+2026-04-11 17:19:40.972 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.5294 ms
+2026-04-11 17:19:41.575 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0468 ms
+2026-04-11 17:19:41.578 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.5901 ms
+2026-04-11 17:19:42.336 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0366 ms
+2026-04-11 17:19:42.339 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.2071 ms
+2026-04-11 17:19:42.865 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0425 ms
+2026-04-11 17:19:42.868 +12:00 [INF] HTTP GET /api/users responded 200 in 1.7017 ms
+2026-04-11 17:19:45.291 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.3249 ms
+2026-04-11 17:19:45.789 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.5033 ms
+2026-04-11 17:20:00.205 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0467 ms
+2026-04-11 17:20:00.213 +12:00 [INF] HTTP GET /api/users responded 200 in 5.1246 ms
+2026-04-11 17:20:00.820 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0476 ms
+2026-04-11 17:20:00.823 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.3073 ms
+2026-04-11 17:20:01.417 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0414 ms
+2026-04-11 17:20:01.421 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.2772 ms
+2026-04-11 17:20:01.912 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0406 ms
+2026-04-11 17:20:01.915 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.4050 ms
+2026-04-11 17:20:02.589 +12:00 [INF] HTTP GET /api/users responded 200 in 2.6148 ms
+2026-04-11 17:20:15.262 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.1227 ms
+2026-04-11 17:20:15.268 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.6488 ms
+2026-04-11 17:20:16.437 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.5205 ms
+2026-04-11 17:20:16.442 +12:00 [INF] HTTP GET /api/users responded 200 in 2.6409 ms
+2026-04-11 17:26:48.563 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0889 ms
+2026-04-11 17:26:48.595 +12:00 [INF] HTTP GET /api/roles responded 200 in 28.7039 ms
+2026-04-11 17:26:49.117 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0443 ms
+2026-04-11 17:26:49.121 +12:00 [INF] HTTP GET /api/users responded 200 in 1.9859 ms
+2026-04-11 17:26:50.546 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.5812 ms
+2026-04-11 17:26:53.134 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.2241 ms
+2026-04-11 17:26:54.112 +12:00 [INF] HTTP GET /api/users responded 200 in 4.3859 ms
+2026-04-11 17:26:54.115 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0771 ms
+2026-04-11 17:26:54.118 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0634 ms
+2026-04-11 17:26:54.120 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.7891 ms
+2026-04-11 17:26:54.123 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.7043 ms
+2026-04-11 17:27:12.542 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 1.4080 ms
+2026-04-11 17:27:12.617 +12:00 [INF] HTTP POST /api/users responded 400 in 72.0835 ms
+2026-04-11 17:27:25.711 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0847 ms
+2026-04-11 17:27:25.716 +12:00 [INF] HTTP POST /api/users responded 400 in 2.4210 ms
+2026-04-11 17:27:41.621 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0705 ms
+2026-04-11 17:27:41.898 +12:00 [INF] HTTP POST /api/users responded 200 in 274.4163 ms
+2026-04-11 17:27:41.916 +12:00 [INF] HTTP GET /api/users responded 200 in 2.4549 ms
+2026-04-11 17:27:55.289 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0680 ms
+2026-04-11 17:27:55.290 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0439 ms
+2026-04-11 17:27:55.293 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0612 ms
+2026-04-11 17:27:55.299 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.6262 ms
+2026-04-11 17:27:55.300 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.0351 ms
+2026-04-11 17:27:55.311 +12:00 [INF] HTTP GET /api/users responded 200 in 15.8313 ms
+2026-04-11 17:27:56.115 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.0722 ms
+2026-04-11 17:27:56.115 +12:00 [INF] HTTP GET /api/users responded 200 in 4.4750 ms
+2026-04-11 17:27:56.123 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 9.8766 ms
+2026-04-11 17:28:03.885 +12:00 [INF] HTTP OPTIONS /api/users/2 responded 204 in 0.0617 ms
+2026-04-11 17:28:03.965 +12:00 [INF] HTTP GET /api/users/2 responded 200 in 74.9709 ms
+2026-04-11 17:28:07.076 +12:00 [INF] HTTP GET /api/users/2 responded 200 in 5.5922 ms
+2026-04-11 17:28:26.780 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0866 ms
+2026-04-11 17:28:26.787 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.3196 ms
+2026-04-11 17:28:27.431 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0518 ms
+2026-04-11 17:28:27.434 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.1255 ms
+2026-04-11 17:28:27.848 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0412 ms
+2026-04-11 17:28:27.851 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.2362 ms
+2026-04-11 17:28:28.306 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0664 ms
+2026-04-11 17:28:28.311 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0401 ms
+2026-04-11 17:28:28.311 +12:00 [INF] HTTP GET /api/users responded 200 in 2.8784 ms
+2026-04-11 17:28:28.314 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.1242 ms
+2026-04-11 17:28:28.315 +12:00 [INF] HTTP GET /api/roles responded 200 in 0.9721 ms
+2026-04-11 17:28:30.153 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0364 ms
+2026-04-11 17:28:30.157 +12:00 [INF] HTTP GET /api/products responded 200 in 1.5733 ms
+2026-04-11 17:28:41.559 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0804 ms
+2026-04-11 17:28:41.564 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.9735 ms
+2026-04-11 17:28:41.938 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0408 ms
+2026-04-11 17:28:41.941 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.2189 ms
+2026-04-11 17:28:43.090 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0406 ms
+2026-04-11 17:28:43.093 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.1848 ms
+2026-04-11 17:28:43.844 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0383 ms
+2026-04-11 17:28:43.848 +12:00 [INF] HTTP GET /api/users responded 200 in 2.2407 ms
+2026-04-11 17:28:43.852 +12:00 [INF] HTTP GET /api/roles responded 200 in 0.9729 ms
+2026-04-11 17:28:43.852 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 0.7281 ms
+2026-04-11 17:29:07.489 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0714 ms
+2026-04-11 17:29:07.490 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0564 ms
+2026-04-11 17:29:07.490 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0472 ms
+2026-04-11 17:29:07.494 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.6744 ms
+2026-04-11 17:29:07.495 +12:00 [INF] HTTP GET /api/users responded 200 in 2.9659 ms
+2026-04-11 17:29:07.495 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.5344 ms
+2026-04-11 17:29:24.186 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0654 ms
+2026-04-11 17:29:24.194 +12:00 [INF] HTTP GET /api/roles responded 200 in 3.8104 ms
+2026-04-11 17:29:25.524 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.2368 ms
+2026-04-11 17:29:25.528 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0308 ms
+2026-04-11 17:29:25.530 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.7293 ms
+2026-04-11 17:29:25.530 +12:00 [INF] HTTP GET /api/users responded 200 in 2.8226 ms
+2026-04-11 17:29:25.533 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.0822 ms
+2026-04-11 17:29:26.923 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.5291 ms
+2026-04-11 17:29:27.372 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0445 ms
+2026-04-11 17:29:27.375 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 1.5589 ms
+2026-04-11 17:29:28.092 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.4437 ms
+2026-04-11 17:29:28.975 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0378 ms
+2026-04-11 17:29:28.980 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 2.3159 ms
+2026-04-11 17:29:29.911 +12:00 [INF] HTTP GET /api/users responded 200 in 2.9638 ms
+2026-04-11 17:29:29.914 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0826 ms
+2026-04-11 17:29:29.915 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.1837 ms
+2026-04-11 17:29:29.916 +12:00 [INF] HTTP GET /api/roles responded 200 in 0.9142 ms
+2026-04-11 17:31:10.433 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0431 ms
+2026-04-11 17:31:10.437 +12:00 [INF] HTTP GET /api/products responded 200 in 1.6004 ms
+2026-04-11 17:31:28.397 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0863 ms
+2026-04-11 17:31:28.679 +12:00 [INF] HTTP POST /api/products responded 201 in 279.1464 ms
+2026-04-11 17:31:28.685 +12:00 [INF] HTTP GET /api/products responded 200 in 1.0117 ms
+2026-04-11 17:39:15.096 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.8284 ms
+2026-04-11 17:39:15.146 +12:00 [INF] HTTP POST /api/products responded 201 in 44.6206 ms
+2026-04-11 17:39:15.154 +12:00 [INF] HTTP GET /api/products responded 200 in 2.1879 ms
+2026-04-11 17:39:23.365 +12:00 [INF] HTTP OPTIONS /api/products/2 responded 204 in 0.0793 ms
+2026-04-11 17:39:23.473 +12:00 [INF] HTTP PUT /api/products/2 responded 204 in 105.3388 ms
+2026-04-11 17:39:23.479 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0444 ms
+2026-04-11 17:39:23.482 +12:00 [INF] HTTP GET /api/products responded 200 in 1.3357 ms
+2026-04-11 17:39:25.416 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0958 ms
+2026-04-11 17:39:25.428 +12:00 [INF] HTTP GET /api/users responded 200 in 5.5196 ms
+2026-04-11 17:39:25.432 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0961 ms
+2026-04-11 17:39:25.438 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0901 ms
+2026-04-11 17:39:25.446 +12:00 [INF] HTTP GET /api/roles responded 200 in 3.6137 ms
+2026-04-11 17:39:25.447 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 3.9040 ms
+2026-04-11 17:39:34.943 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.1071 ms
+2026-04-11 17:39:35.146 +12:00 [INF] HTTP POST /api/users responded 200 in 199.3078 ms
+2026-04-11 17:39:35.155 +12:00 [INF] HTTP GET /api/users responded 200 in 2.9190 ms
+2026-04-11 17:39:54.016 +12:00 [INF] HTTP OPTIONS /api/users/1 responded 204 in 0.0849 ms
+2026-04-11 17:39:54.032 +12:00 [INF] HTTP GET /api/users/1 responded 200 in 13.8606 ms
+2026-04-11 17:39:57.344 +12:00 [INF] HTTP OPTIONS /api/users/1 responded 204 in 0.0443 ms
+2026-04-11 17:39:57.448 +12:00 [INF] HTTP PUT /api/users/1 responded 204 in 102.2085 ms
+2026-04-11 17:39:57.474 +12:00 [INF] HTTP OPTIONS /api/users/1/roles responded 204 in 0.0933 ms
+2026-04-11 17:39:57.747 +12:00 [INF] HTTP POST /api/users/1/roles responded 204 in 270.8001 ms
+2026-04-11 17:39:57.768 +12:00 [INF] HTTP OPTIONS /api/users/1/organizations responded 204 in 0.0698 ms
+2026-04-11 17:39:57.810 +12:00 [INF] HTTP POST /api/users/1/organizations responded 204 in 39.5498 ms
+2026-04-11 17:39:57.814 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0555 ms
+2026-04-11 17:39:57.826 +12:00 [INF] HTTP GET /api/users responded 200 in 10.6169 ms
+2026-04-11 17:40:03.352 +12:00 [INF] HTTP OPTIONS /api/users/1 responded 204 in 0.0562 ms
+2026-04-11 17:40:03.366 +12:00 [INF] HTTP GET /api/users/1 responded 200 in 11.4929 ms
+2026-04-11 17:40:17.609 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.1200 ms
+2026-04-11 17:40:17.821 +12:00 [INF] HTTP POST /api/users responded 400 in 209.4972 ms
+2026-04-11 17:40:25.697 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0465 ms
+2026-04-11 17:40:25.702 +12:00 [INF] HTTP GET /api/products responded 200 in 2.5480 ms
+2026-04-11 17:40:33.513 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0982 ms
+2026-04-11 17:40:33.524 +12:00 [INF] HTTP POST /api/products responded 201 in 7.6274 ms
+2026-04-11 17:40:33.540 +12:00 [INF] HTTP GET /api/products responded 200 in 4.2401 ms
+2026-04-11 17:40:38.864 +12:00 [INF] HTTP OPTIONS /api/products/1 responded 204 in 0.0898 ms
+2026-04-11 17:40:38.880 +12:00 [INF] HTTP PUT /api/products/1 responded 204 in 12.4281 ms
+2026-04-11 17:40:38.884 +12:00 [INF] HTTP OPTIONS /api/products responded 204 in 0.0644 ms
+2026-04-11 17:40:38.889 +12:00 [INF] HTTP GET /api/products responded 200 in 2.7969 ms
+2026-04-11 17:40:52.089 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0684 ms
+2026-04-11 17:40:52.101 +12:00 [INF] HTTP GET /api/users responded 200 in 8.1005 ms
+2026-04-11 17:40:52.103 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0916 ms
+2026-04-11 17:40:52.110 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0919 ms
+2026-04-11 17:40:52.114 +12:00 [INF] HTTP GET /api/roles responded 200 in 3.1786 ms
+2026-04-11 17:40:52.118 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 3.8820 ms
+2026-04-11 17:41:36.848 +12:00 [INF] HTTP OPTIONS /api/users/1 responded 204 in 0.0542 ms
+2026-04-11 17:41:36.861 +12:00 [INF] HTTP GET /api/users/1 responded 200 in 9.6834 ms
+2026-04-11 17:41:48.608 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0924 ms
+2026-04-11 17:41:48.800 +12:00 [INF] HTTP POST /api/users responded 200 in 184.7423 ms
+2026-04-11 17:41:48.811 +12:00 [INF] HTTP GET /api/users responded 200 in 3.3563 ms
+2026-04-11 17:41:58.271 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.1104 ms
+2026-04-11 17:41:58.279 +12:00 [INF] HTTP POST /api/users responded 400 in 3.9934 ms
+2026-04-11 17:42:37.597 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0915 ms
+2026-04-11 17:42:37.598 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0633 ms
+2026-04-11 17:42:37.603 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1011 ms
+2026-04-11 17:42:37.607 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.8042 ms
+2026-04-11 17:42:37.611 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 4.1692 ms
+2026-04-11 17:42:37.620 +12:00 [INF] HTTP GET /api/users responded 200 in 15.3457 ms
+2026-04-11 17:42:50.287 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0808 ms
+2026-04-11 17:42:50.293 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.6651 ms
+2026-04-11 17:42:51.006 +12:00 [INF] HTTP OPTIONS /api/permissions/tree responded 204 in 0.0415 ms
+2026-04-11 17:42:51.011 +12:00 [INF] HTTP GET /api/permissions/tree responded 200 in 2.2050 ms
+2026-04-11 17:42:51.443 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0469 ms
+2026-04-11 17:42:51.447 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 2.1159 ms
+2026-04-11 17:42:52.475 +12:00 [INF] HTTP OPTIONS /api/data-dictionary/items responded 204 in 0.0371 ms
+2026-04-11 17:42:52.479 +12:00 [INF] HTTP GET /api/data-dictionary/items responded 200 in 1.9436 ms
+2026-04-11 17:42:53.086 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.3843 ms
+2026-04-11 17:42:53.624 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0456 ms
+2026-04-11 17:42:53.628 +12:00 [INF] HTTP GET /api/users responded 200 in 2.9834 ms
+2026-04-11 17:42:53.630 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.0003 ms
+2026-04-11 17:42:53.630 +12:00 [INF] HTTP GET /api/roles responded 200 in 1.6221 ms
+2026-04-11 17:51:46.761 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.1208 ms
+2026-04-11 17:51:46.781 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.1501 ms
+2026-04-11 17:51:46.782 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.1318 ms
+2026-04-11 17:51:46.801 +12:00 [INF] HTTP GET /api/users responded 200 in 37.0948 ms
+2026-04-11 17:51:46.805 +12:00 [INF] HTTP GET /api/roles responded 200 in 17.3413 ms
+2026-04-11 17:51:46.805 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 16.2109 ms
+2026-04-11 18:25:24.913 +12:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 316.5673 ms
+2026-04-11 18:34:04.818 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 1.0460 ms
+2026-04-11 18:34:04.900 +12:00 [INF] HTTP GET /api/roles responded 200 in 80.5185 ms
+2026-04-11 18:34:05.562 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0472 ms
+2026-04-11 18:34:05.568 +12:00 [INF] HTTP GET /api/roles responded 200 in 2.0173 ms
+2026-04-11 18:34:05.576 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0360 ms
+2026-04-11 18:34:05.579 +12:00 [INF] HTTP GET /api/users responded 200 in 14.4703 ms
+2026-04-11 18:34:05.586 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 7.6950 ms
+2026-04-11 18:34:14.915 +12:00 [INF] HTTP OPTIONS /api/users responded 204 in 0.0729 ms
+2026-04-11 18:34:14.923 +12:00 [INF] HTTP GET /api/users responded 200 in 3.4830 ms
+2026-04-11 18:34:14.935 +12:00 [INF] HTTP OPTIONS /api/roles responded 204 in 0.0637 ms
+2026-04-11 18:34:14.936 +12:00 [INF] HTTP OPTIONS /api/organizations/tree responded 204 in 0.0387 ms
+2026-04-11 18:34:14.939 +12:00 [INF] HTTP GET /api/organizations/tree responded 200 in 1.9133 ms
+2026-04-11 18:34:14.946 +12:00 [INF] HTTP GET /api/roles responded 200 in 9.2442 ms

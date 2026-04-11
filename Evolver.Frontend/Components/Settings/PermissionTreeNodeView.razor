@@ -1,0 +1,27 @@
+@namespace Evolver.Frontend.Components.Settings
+@using Evolver.Shared.Dtos
+
+<li class="mb-1">
+    <div style="padding-left:@($"{Depth * 1.0}rem")">
+        <span class="fw-medium">@Node.Code</span>
+        <span class="text-muted"> — @Node.Name</span>
+        <span class="badge bg-secondary ms-1">@Node.Type</span>
+    </div>
+    @if (Node.Children.Count > 0)
+    {
+        <ul class="list-unstyled ms-2 mt-1">
+            @foreach (var c in Node.Children)
+            {
+                <PermissionTreeNodeView Node="c" Depth="Depth + 1" />
+            }
+        </ul>
+    }
+</li>
+
+@code {
+    [Parameter, EditorRequired]
+    public PermissionTreeNodeDto Node { get; set; } = default!;
+
+    [Parameter]
+    public int Depth { get; set; }
+}

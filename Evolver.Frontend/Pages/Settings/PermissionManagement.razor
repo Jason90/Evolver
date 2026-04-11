@@ -1,0 +1,55 @@
+@page "/settings/permissions"
+@inject HttpClient Http
+
+<PageTitle>权限管理</PageTitle>
+
+<h1>权限管理</h1>
+<p class="text-muted">系统设置 · 权限树（只读展示）。维护权限需具备 <code>permissions.write</code>。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_loading)
+{
+    <p>加载中…</p>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <PermissionTreeView Nodes="_roots" />
+        </div>
+    </div>
+}
+
+@code {
+    private string? _error;
+    private bool _loading = true;
+    private IReadOnlyList<PermissionTreeNodeDto> _roots = Array.Empty<PermissionTreeNodeDto>();
+
+    protected override async Task OnInitializedAsync() => await LoadTreeAsync();
+
+    private async Task LoadTreeAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<PermissionTreeNodeDto>>>("api/permissions/tree");
+            _roots = env?.Success == true ? env.Data ?? new List<PermissionTreeNodeDto>() : new List<PermissionTreeNodeDto>();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _roots = new List<PermissionTreeNodeDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

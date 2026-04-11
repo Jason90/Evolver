@@ -1,0 +1,92 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@using Evolver.Frontend.Services
+@inject HttpClient Http
+@inject AuthTokenStore Tokens
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<PageTitle>登录</PageTitle>
+
+<h1>登录</h1>
+
+<div class="row">
+    <div class="col-12 col-md-6">
+        <div class="mb-3">
+            <label class="form-label">用户名</label>
+            <input class="form-control" @bind="_userName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">密码</label>
+            <input class="form-control" type="password" @bind="_password" />
+        </div>
+        <button class="btn btn-primary" @onclick="DoLogin" disabled="@_busy">登录</button>
+        <button class="btn btn-outline-secondary ms-2" @onclick="DoLogout" disabled="@_busy">退出登录</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger mt-3">@_error</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Tokens.AccessToken))
+{
+    <div class="alert alert-success mt-3">已登录，令牌已写入浏览器会话。</div>
+}
+
+@code {
+    private string _userName = "admin";
+    private string _password = "admin123";
+    private bool _busy;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(Tokens.AccessToken))
+            Nav.NavigateTo("/", replace: true);
+    }
+
+    private async Task DoLogin()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("api/auth/login", new LoginRequestDto(_userName, _password));
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = $"登录失败: {(int)resp.StatusCode} {resp.ReasonPhrase}";
+                return;
+            }
+
+            var envelope = await resp.Content.ReadFromJsonAsync<ApiEnvelopeJson<LoginResponseDto>>();
+            var login = envelope?.Data;
+            if (envelope?.Success != true || login is null || string.IsNullOrWhiteSpace(login.AccessToken))
+            {
+                _error = envelope?.Message ?? "登录响应无效。";
+                return;
+            }
+
+            Tokens.Set(login.AccessToken);
+            await Tokens.PersistToBrowserAsync(Js);
+            Nav.NavigateTo("/", replace: true);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DoLogout()
+    {
+        Tokens.Clear();
+        await Tokens.ClearBrowserAsync(Js);
+    }
+}

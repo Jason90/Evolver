@@ -1,0 +1,69 @@
+{
+  "Files": [
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\bin\\Debug\\net8.0\\wwwroot\\_framework\\blazor.webassembly.js",
+      "PackagePath": "staticwebassets\\_framework\\blazor.webassembly.js"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\obj\\Debug\\net8.0\\compressed\\9lwez1ktg4.gz",
+      "PackagePath": "staticwebassets\\_framework\\blazor.webassembly.js.gz"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\obj\\Debug\\net8.0\\scopedcss\\bundle\\Evolver.Frontend.styles.css",
+      "PackagePath": "staticwebassets\\Evolver.Frontend.styles.css"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\appsettings.json",
+      "PackagePath": "staticwebassets\\appsettings.json"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\css\\app.css",
+      "PackagePath": "staticwebassets\\css\\app.css"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\css\\bootstrap\\bootstrap.min.css",
+      "PackagePath": "staticwebassets\\css\\bootstrap\\bootstrap.min.css"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\css\\bootstrap\\bootstrap.min.css.map",
+      "PackagePath": "staticwebassets\\css\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\favicon.png",
+      "PackagePath": "staticwebassets\\favicon.png"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\icon-192.png",
+      "PackagePath": "staticwebassets\\icon-192.png"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\index.html",
+      "PackagePath": "staticwebassets\\index.html"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\js\\authStorage.js",
+      "PackagePath": "staticwebassets\\js\\authStorage.js"
+    },
+    {
+      "Id": "c:\\JEF\\Code\\Jason\\Cursor\\Evolver\\Evolver.Frontend\\wwwroot\\sample-data\\weather.json",
+      "PackagePath": "staticwebassets\\sample-data\\weather.json"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Evolver.Frontend.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.Evolver.Frontend.props",
+      "PackagePath": "build\\Evolver.Frontend.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.Evolver.Frontend.props",
+      "PackagePath": "buildMultiTargeting\\Evolver.Frontend.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.Evolver.Frontend.props",
+      "PackagePath": "buildTransitive\\Evolver.Frontend.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

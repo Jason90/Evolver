@@ -1,0 +1,11 @@
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\bin\Release\net8.0\Evolver.Shared.deps.json
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\bin\Release\net8.0\Evolver.Shared.dll
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\bin\Release\net8.0\Evolver.Shared.pdb
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\Evolver.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\Evolver.Shared.AssemblyInfoInputs.cache
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\Evolver.Shared.AssemblyInfo.cs
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\Evolver.Shared.csproj.CoreCompileInputs.cache
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\Evolver.Shared.dll
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\refint\Evolver.Shared.dll
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\Evolver.Shared.pdb
+C:\JEF\Code\Jason\Cursor\Evolver\Evolver.Shared\obj\Release\net8.0\ref\Evolver.Shared.dll

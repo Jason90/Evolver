@@ -1,0 +1,187 @@
+﻿@implements IDisposable
+@inject NavigationManager Nav
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Evolver</a>
+        <button title="Navigation menu" class="navbar-toggler" type="button" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable nav-menu-body">
+    <nav class="flex-column">
+        <div class="nav-item px-3 py-2">
+            <small class="text-nav-muted">主导航</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="" Match="NavLinkMatch.All">
+                <i class="bi bi-house-door nav-menu-icon" aria-hidden="true"></i>
+                <span>仪表盘</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SettingsParentClass()"
+                    @onclick="ToggleSettingsExpanded"
+                    aria-expanded="@_settingsExpanded">
+                <i class="bi bi-gear nav-menu-icon" aria-hidden="true"></i>
+                <span>系统设置</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_settingsExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_settingsExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="settings/users">用户管理</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/roles">角色管理</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/permissions">权限管理</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/organizations">组织架构</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/data-dictionary">数据字典</NavLink>
+                </div>
+            }
+        </div>
+
+        <div class="nav-item px-3 pt-3">
+            <small class="text-nav-muted">业务模块</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="customers">
+                <i class="bi bi-people nav-menu-icon" aria-hidden="true"></i>
+                <span>客户与会员</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 pt-2">
+            <small class="text-nav-muted d-block mb-1">商品</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="products">
+                <i class="bi bi-box-seam nav-menu-icon" aria-hidden="true"></i>
+                <span>商品信息</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="product-master">
+                <i class="bi bi-diagram-3 nav-menu-icon" aria-hidden="true"></i>
+                <span>分类 / 库存 / BOM</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 pt-2">
+            <small class="text-nav-muted d-block mb-1">采购 / 生产</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="procurement">
+                <i class="bi bi-truck nav-menu-icon" aria-hidden="true"></i>
+                <span>供应商与采购</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="production">
+                <i class="bi bi-tools nav-menu-icon" aria-hidden="true"></i>
+                <span>生产与领料</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 pt-2">
+            <small class="text-nav-muted d-block mb-1">订单</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="orders">
+                <i class="bi bi-receipt nav-menu-icon" aria-hidden="true"></i>
+                <span>销售订单</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="orders/kanban">
+                <i class="bi bi-columns-gap nav-menu-icon" aria-hidden="true"></i>
+                <span>销售看板</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 pt-2">
+            <small class="text-nav-muted d-block mb-1">财务 / 报表</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="finance">
+                <i class="bi bi-cash-stack nav-menu-icon" aria-hidden="true"></i>
+                <span>财务与成本</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="reports">
+                <i class="bi bi-file-earmark-bar-graph nav-menu-icon" aria-hidden="true"></i>
+                <span>报表中心</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3 pt-2">
+            <small class="text-nav-muted d-block mb-1">数据与工具</small>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="import">
+                <i class="bi bi-upload nav-menu-icon" aria-hidden="true"></i>
+                <span>Excel 导入</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-main" href="menu-intelligence">
+                <i class="bi bi-graph-up nav-menu-icon" aria-hidden="true"></i>
+                <span>菜单智能</span>
+                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool _collapseNavMenu;
+    private bool _settingsExpanded = true;
+
+    private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu() => _collapseNavMenu = !_collapseNavMenu;
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        SyncSettingsExpanded();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        SyncSettingsExpanded();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncSettingsExpanded()
+    {
+        if (Nav.Uri.Contains("/settings", StringComparison.OrdinalIgnoreCase))
+            _settingsExpanded = true;
+    }
+
+    private void ToggleSettingsExpanded() => _settingsExpanded = !_settingsExpanded;
+
+    private string SettingsParentClass()
+    {
+        var u = Nav.Uri;
+        if (u.Contains("/settings", StringComparison.OrdinalIgnoreCase))
+            return "nav-settings-parent-active";
+        return "";
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

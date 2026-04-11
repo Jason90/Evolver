@@ -1,0 +1,21 @@
+@namespace Evolver.Frontend.Components.Settings
+@using Evolver.Shared.Dtos
+
+@if (Nodes is { Count: > 0 })
+{
+    <ul class="list-unstyled mb-0">
+        @foreach (var n in Nodes)
+        {
+            <PermissionTreeNodeView Node="n" Depth="0" />
+        }
+    </ul>
+}
+else
+{
+    <p class="text-muted small">暂无权限数据。</p>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<PermissionTreeNodeDto>? Nodes { get; set; }
+}

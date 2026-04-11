@@ -1,0 +1,642 @@
+@page "/settings/users"
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@inject AuthTokenStore Tokens
+
+<PageTitle>用户管理</PageTitle>
+
+<h1>用户管理</h1>
+<p class="text-muted">增删改查、角色与组织关联、管理员重置密码。需具备 <code>users.read</code> / <code>users.write</code> 等权限。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+<div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+    <button type="button" class="btn btn-primary" @onclick="OpenCreateAsync" disabled="@_busy">新建用户</button>
+    <button type="button" class="btn btn-outline-secondary" @onclick="ReloadAllAsync" disabled="@_busy">刷新</button>
+</div>
+
+@if (_users is null)
+{
+    <p>加载中…</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+            <tr>
+                <th>Id</th>
+                <th>用户名</th>
+                <th>Email</th>
+                <th>电话</th>
+                <th>角色</th>
+                <th style="width:14rem">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var u in _users)
+            {
+                <tr>
+                    <td>@u.Id</td>
+                    <td>@u.UserName</td>
+                    <td>@(u.Email ?? "—")</td>
+                    <td>@(u.PhoneNumber ?? "—")</td>
+                    <td>@string.Join(", ", u.Roles)</td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary" @onclick="() => OpenEditAsync(u.Id)" disabled="@_busy">编辑</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => OpenPasswordModal(u.Id)" disabled="@_busy">重置密码</button>
+                            <button type="button" class="btn btn-outline-danger" @onclick="() => _deleteId = u.Id" disabled="@(_busy || IsCurrentUser(u.Id))">删除</button>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (_createOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建用户</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCreate"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_cUserName" autocomplete="off" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">初始密码 <span class="text-danger">*</span></label>
+                            <input class="form-control" type="password" @bind="_cPassword" autocomplete="new-password" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" type="email" @bind="_cEmail" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">电话</label>
+                            <input class="form-control" @bind="_cPhone" />
+                        </div>
+                    </div>
+                    @if (_roleOptions.Count > 0)
+                    {
+                        <div class="mt-3">
+                            <label class="form-label">角色</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var r in _roleOptions)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="@($"cr-{r.Id}")"
+                                               checked="@_cRoles.Contains(r.Name)"
+                                               @onchange="e => ToggleSet(_cRoles, r.Name, e)" />
+                                        <label class="form-check-label" for="@($"cr-{r.Id}")">@r.Name</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    @if (_orgRoots is { Count: > 0 })
+                    {
+                        <div class="mt-3">
+                            <label class="form-label">关联组织（多选）</label>
+                            <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
+                                @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
+                                {
+                                    <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
+                                        <input class="form-check-input" type="checkbox" id="@($"co-{node.Id}")"
+                                               checked="@_cOrgIds.Contains(node.Id)"
+                                               @onchange="e => ToggleSet(_cOrgIds, node.Id, e)" />
+                                        <label class="form-check-label" for="@($"co-{node.Id}")">@node.Name</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCreate" disabled="@_busy">取消</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateUserAsync" disabled="@_busy">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_editOpen && _editDetail is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">编辑用户 — @_editDetail.UserName</h5>
+                    <button type="button" class="btn-close" @onclick="CloseEdit"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">用户名</label>
+                            <input class="form-control" value="@_editDetail.UserName" disabled />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" type="email" @bind="_eEmail" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">电话</label>
+                            <input class="form-control" @bind="_ePhone" />
+                        </div>
+                    </div>
+                    @if (_roleOptions.Count > 0)
+                    {
+                        <div class="mt-3">
+                            <label class="form-label">角色</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var r in _roleOptions)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="@($"er-{r.Id}")"
+                                               checked="@_eRoles.Contains(r.Name)"
+                                               @onchange="e => ToggleSet(_eRoles, r.Name, e)" />
+                                        <label class="form-check-label" for="@($"er-{r.Id}")">@r.Name</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    @if (_orgRoots is { Count: > 0 })
+                    {
+                        <div class="mt-3">
+                            <label class="form-label">关联组织（多选）</label>
+                            <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
+                                @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
+                                {
+                                    <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
+                                        <input class="form-check-input" type="checkbox" id="@($"eo-{node.Id}")"
+                                               checked="@_eOrgIds.Contains(node.Id)"
+                                               @onchange="e => ToggleSet(_eOrgIds, node.Id, e)" />
+                                        <label class="form-check-label" for="@($"eo-{node.Id}")">@node.Name</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEdit" disabled="@_busy">取消</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@_busy">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_passwordUserId is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">重置密码 — 用户 Id @_passwordUserId</h5>
+                    <button type="button" class="btn-close" @onclick="ClosePassword"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">新密码（至少 6 位）</label>
+                    <input class="form-control" type="password" @bind="_newPassword" autocomplete="new-password" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ClosePassword" disabled="@_busy">取消</button>
+                    <button type="button" class="btn btn-primary" @onclick="SavePasswordAsync" disabled="@_busy">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteId is not null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">确认删除</h5>
+                    <button type="button" class="btn-close" @onclick="() => _deleteId = null"></button>
+                </div>
+                <div class="modal-body">
+                    确定删除用户 Id <strong>@_deleteId</strong>？此操作为软删除。
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _deleteId = null" disabled="@_busy">取消</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private string? _error;
+    private string? _success;
+    private bool _busy;
+    private long? _currentUserId;
+
+    private List<UserListItemDto>? _users;
+    private List<RoleDto> _roleOptions = new();
+    private List<OrganizationTreeNodeDto> _orgRoots = new();
+
+    private bool _createOpen;
+    private string _cUserName = "";
+    private string _cPassword = "";
+    private string? _cEmail;
+    private string? _cPhone;
+    private readonly HashSet<string> _cRoles = new(StringComparer.Ordinal);
+    private readonly HashSet<long> _cOrgIds = new();
+
+    private bool _editOpen;
+    private long _editId;
+    private UserDetailDto? _editDetail;
+    private string? _eEmail;
+    private string? _ePhone;
+    private readonly HashSet<string> _eRoles = new(StringComparer.Ordinal);
+    private readonly HashSet<long> _eOrgIds = new();
+
+    private long? _passwordUserId;
+    private string _newPassword = "";
+
+    private long? _deleteId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUserId = JwtUserIdReader.TryGetUserId(Tokens.AccessToken);
+        await ReloadAllAsync();
+    }
+
+    private bool IsCurrentUser(long id) => _currentUserId == id;
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null;
+        _success = null;
+        await Task.WhenAll(LoadUsersAsync(), LoadRolesAsync(), LoadOrgTreeAsync());
+    }
+
+    private async Task OpenCreateAsync()
+    {
+        _error = null;
+        _success = null;
+        _cUserName = "";
+        _cPassword = "";
+        _cEmail = null;
+        _cPhone = null;
+        _cRoles.Clear();
+        _cOrgIds.Clear();
+        if (_orgRoots.Count == 0)
+            await LoadOrgTreeAsync();
+        _createOpen = true;
+    }
+
+    private void CloseCreate() => _createOpen = false;
+
+    private async Task OpenEditAsync(long id)
+    {
+        _error = null;
+        _success = null;
+        _busy = true;
+        try
+        {
+            if (_orgRoots.Count == 0)
+                await LoadOrgTreeAsync();
+
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<UserDetailDto>>($"api/users/{id}");
+            if (env?.Success != true || env.Data is null)
+            {
+                _error = env?.Message ?? "无法加载用户详情。";
+                return;
+            }
+
+            _editId = id;
+            _editDetail = env.Data;
+            _eEmail = env.Data.Email;
+            _ePhone = env.Data.PhoneNumber;
+            _eRoles.Clear();
+            foreach (var r in env.Data.Roles)
+                _eRoles.Add(r);
+            _eOrgIds.Clear();
+            foreach (var o in env.Data.OrganizationIds)
+                _eOrgIds.Add(o);
+
+            _editOpen = true;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void CloseEdit()
+    {
+        _editOpen = false;
+        _editDetail = null;
+    }
+
+    private void OpenPasswordModal(long id)
+    {
+        _error = null;
+        _success = null;
+        _passwordUserId = id;
+        _newPassword = "";
+    }
+
+    private void ClosePassword()
+    {
+        _passwordUserId = null;
+        _newPassword = "";
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<UserListItemDto>>>("api/users");
+            _users = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _users = new();
+        }
+    }
+
+    private async Task LoadRolesAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<RoleDto>>>("api/roles");
+            _roleOptions = env?.Success == true ? env.Data ?? new() : new();
+        }
+        catch
+        {
+            _roleOptions = new();
+        }
+    }
+
+    private async Task LoadOrgTreeAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<OrganizationTreeNodeDto>>>("api/organizations/tree");
+            _orgRoots = env?.Success == true ? env.Data ?? new() : new();
+        }
+        catch
+        {
+            _orgRoots = new();
+        }
+    }
+
+    private async Task CreateUserAsync()
+    {
+        if (_busy) return;
+        if (string.IsNullOrWhiteSpace(_cUserName) || string.IsNullOrEmpty(_cPassword))
+        {
+            _error = "请填写用户名与初始密码。";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var dto = new CreateUserDto(
+                _cUserName.Trim(),
+                _cPassword,
+                string.IsNullOrWhiteSpace(_cEmail) ? null : _cEmail.Trim(),
+                string.IsNullOrWhiteSpace(_cPhone) ? null : _cPhone.Trim(),
+                _cRoles.Count > 0 ? _cRoles.ToList() : null);
+
+            var resp = await Http.PostAsJsonAsync("api/users", dto);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<UserListItemDto>>(text, JsonOpts);
+            var newId = env?.Data?.Id ?? 0;
+            if (newId > 0 && _cOrgIds.Count > 0)
+            {
+                var orgResp = await Http.PostAsJsonAsync($"api/users/{newId}/organizations", new SetUserOrganizationsDto(_cOrgIds.ToList()));
+                if (!orgResp.IsSuccessStatusCode)
+                {
+                    _error = ReadErrorText(await orgResp.Content.ReadAsStringAsync());
+                    await LoadUsersAsync();
+                    _createOpen = false;
+                    return;
+                }
+            }
+
+            _success = "用户已创建。";
+            _createOpen = false;
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_busy || _editDetail is null) return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var put = new UpdateUserDto(
+                string.IsNullOrWhiteSpace(_eEmail) ? null : _eEmail.Trim(),
+                _ePhone,
+                null);
+
+            var putResp = await Http.PutAsJsonAsync($"api/users/{_editId}", put);
+            if (!putResp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(await putResp.Content.ReadAsStringAsync());
+                return;
+            }
+
+            var rolesResp = await Http.PostAsJsonAsync($"api/users/{_editId}/roles", new SetUserRolesDto(_eRoles.ToList()));
+            if (!rolesResp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(await rolesResp.Content.ReadAsStringAsync());
+                return;
+            }
+
+            var orgResp = await Http.PostAsJsonAsync($"api/users/{_editId}/organizations", new SetUserOrganizationsDto(_eOrgIds.ToList()));
+            if (!orgResp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(await orgResp.Content.ReadAsStringAsync());
+                return;
+            }
+
+            _success = "已保存。";
+            CloseEdit();
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SavePasswordAsync()
+    {
+        if (_busy || _passwordUserId is not { } uid) return;
+        if (string.IsNullOrEmpty(_newPassword) || _newPassword.Length < 6)
+        {
+            _error = "新密码至少 6 位。";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"api/users/{uid}/password", new AdminChangePasswordDto(_newPassword));
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(await resp.Content.ReadAsStringAsync());
+                return;
+            }
+
+            _success = "密码已更新。";
+            ClosePassword();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy || _deleteId is not { } id) return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/users/{id}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(await resp.Content.ReadAsStringAsync());
+                return;
+            }
+
+            _deleteId = null;
+            _success = "已删除。";
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string ReadErrorText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "请求失败。";
+        try
+        {
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<JsonElement>>(text, JsonOpts);
+            if (!string.IsNullOrEmpty(env?.Message))
+                return env.Message!;
+        }
+        catch
+        {
+            // plain text
+        }
+
+        return text.Length > 400 ? text[..400] + "…" : text;
+    }
+
+    private static void ToggleSet(HashSet<string> set, string value, ChangeEventArgs e)
+    {
+        var on = e.Value is bool b && b;
+        if (on) set.Add(value);
+        else set.Remove(value);
+    }
+
+    private static void ToggleSet(HashSet<long> set, long value, ChangeEventArgs e)
+    {
+        var on = e.Value is bool b && b;
+        if (on) set.Add(value);
+        else set.Remove(value);
+    }
+
+    private static IEnumerable<(OrganizationTreeNodeDto node, int depth)> FlattenOrgTree(IEnumerable<OrganizationTreeNodeDto> roots)
+    {
+        foreach (var r in roots)
+        {
+            foreach (var x in Walk(r, 0))
+                yield return x;
+        }
+    }
+
+    private static IEnumerable<(OrganizationTreeNodeDto node, int depth)> Walk(OrganizationTreeNodeDto n, int depth)
+    {
+        yield return (n, depth);
+        foreach (var c in n.Children)
+        {
+            foreach (var x in Walk(c, depth + 1))
+                yield return x;
+        }
+    }
+}

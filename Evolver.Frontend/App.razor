@@ -1,0 +1,54 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Evolver.Frontend.Services
+@inject AuthTokenStore Tokens
+@inject Microsoft.JSInterop.IJSRuntime Js
+
+<CascadingAuthenticationState>
+    @if (!_sessionReady)
+    {
+        <div class="p-4 text-muted">正在加载会话…</div>
+    }
+    else
+    {
+        <Router AppAssembly="@typeof(App).Assembly">
+            <Found Context="routeData">
+                <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                    <NotAuthorized>
+                        @if (context.User.Identity?.IsAuthenticated == true)
+                        {
+                            <p class="p-4 text-danger">当前账号无权访问该页面。</p>
+                        }
+                        else
+                        {
+                            <RedirectToLogin />
+                        }
+                    </NotAuthorized>
+                    <Authorizing>
+                        <div class="p-4 text-muted">验证身份…</div>
+                    </Authorizing>
+                </AuthorizeRouteView>
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <PageTitle>未找到</PageTitle>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <p role="alert">没有对应路由。</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    }
+</CascadingAuthenticationState>
+
+@code {
+    private bool _sessionReady;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await Tokens.RestoreFromBrowserAsync(Js);
+        _sessionReady = true;
+        StateHasChanged();
+    }
+}

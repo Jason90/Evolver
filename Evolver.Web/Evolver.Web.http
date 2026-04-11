@@ -1,0 +1,27 @@
+@host = http://127.0.0.1:5212
+
+### 1) 登录，复制响应 JSON 中 `data.accessToken`（统一信封包裹）
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "admin",
+  "password": "admin123"
+}
+
+### 2) 将下面 YOUR_ACCESS_TOKEN 换成上一步的 accessToken（仅 JWT 字符串，不要带 Bearer 前缀）
+GET {{host}}/api/products
+Authorization: Bearer YOUR_ACCESS_TOKEN
+Accept: application/json
+
+### 3) 系统设置 — 组织树（需 permissions: organizations.read 或 Admin）
+GET {{host}}/api/organizations/tree
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### 4) 系统设置 — 用户列表（users.read）
+GET {{host}}/api/users
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+### 5) 系统设置 — 数据字典（dictionary.read）
+GET {{host}}/api/data-dictionary/items
+Authorization: Bearer YOUR_ACCESS_TOKEN

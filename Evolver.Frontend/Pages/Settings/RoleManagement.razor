@@ -1,0 +1,52 @@
+@page "/settings/roles"
+@inject HttpClient Http
+
+<PageTitle>角色管理</PageTitle>
+
+<h1>角色管理</h1>
+<p class="text-muted">系统设置 · 角色列表。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_roles is null)
+{
+    <p>加载中…</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>Id</th><th>名称</th></tr></thead>
+        <tbody>
+        @foreach (var r in _roles)
+        {
+            <tr><td>@r.Id</td><td>@r.Name</td></tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string? _error;
+    private List<RoleDto>? _roles;
+
+    protected override async Task OnInitializedAsync() => await LoadRolesAsync();
+
+    private async Task LoadRolesAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<RoleDto>>>("api/roles");
+            _roles = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _roles = new();
+        }
+    }
+}
