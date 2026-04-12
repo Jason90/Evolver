@@ -8,6 +8,8 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 {
     public void Configure(EntityTypeBuilder<Tenant> builder)
     {
-        builder.HasIndex(x => x.Name).IsUnique();
+        builder.HasIndex(x => x.Name)
+            .IsUnique()
+            .HasFilter("IsDeleted = 0");
     }
 }

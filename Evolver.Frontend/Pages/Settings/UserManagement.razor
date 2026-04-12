@@ -1,13 +1,18 @@
 @page "/settings/users"
+@using System.Linq
 @using System.Text.Json
 @using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 @inject HttpClient Http
 @inject AuthTokenStore Tokens
+@inject IJSRuntime JS
 
 <PageTitle>用户管理</PageTitle>
 
-<h1>用户管理</h1>
-<p class="text-muted">增删改查、角色与组织关联、管理员重置密码。需具备 <code>users.read</code> / <code>users.write</code> 等权限。</p>
+<h1 class="mb-2">用户管理</h1>
+<p class="text-muted mb-3">维护可登录系统的账号（用户名、联系方式）、启用状态、角色与组织归属；支持列表检索、批量导入导出，以及由具备权限的管理员修改或重置密码。</p>
 
 @if (_error is not null)
 {
@@ -27,51 +32,48 @@
 
 @if (_pane == UserPane.List)
 {
-    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-primary" @onclick="OpenCreateAsync" disabled="@_busy">新建用户</button>
-        <button type="button" class="btn btn-outline-secondary" @onclick="ReloadAllAsync" disabled="@_busy">刷新</button>
-    </div>
-
-    @if (_users is null)
-    {
-        <p>加载中…</p>
-    }
-    else
-    {
-        <div class="table-responsive border rounded">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead>
-                <tr>
-                    <th>Id</th>
-                    <th>用户名</th>
-                    <th>Email</th>
-                    <th>电话</th>
-                    <th>角色</th>
-                    <th style="width:14rem">操作</th>
-                </tr>
-                </thead>
-                <tbody>
-                @foreach (var u in _users)
+    <EvolverDataTable TableHostId="@UserTableHostId" Loading="@(_users is null)">
+        <ToolbarStart>
+            <div class="position-relative">
+                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
+                      aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                    </svg>
+                </span>
+                <label class="visually-hidden" for="user-global-filter">全文检索</label>
+                <input id="user-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
+                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            </div>
+        </ToolbarStart>
+        <ToolbarEnd>
+            <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreateAsync" disabled="@_busy">
+                <i class="bi bi-plus-lg me-1"></i>新增
+            </button>
+            <div @ref="_exportDropdownRoot" class="dropdown position-relative">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                        @onclick="() => _exportMenuOpen = !_exportMenuOpen"
+                        disabled="@(_busy || _users is null)">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+                @if (_exportMenuOpen)
                 {
-                    <tr>
-                        <td>@u.Id</td>
-                        <td>@u.UserName</td>
-                        <td>@(u.Email ?? "—")</td>
-                        <td>@(u.PhoneNumber ?? "—")</td>
-                        <td>@string.Join(", ", u.Roles)</td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-outline-primary" @onclick="() => OpenEditAsync(u.Id)" disabled="@_busy">编辑</button>
-                                <button type="button" class="btn btn-outline-secondary" @onclick="() => OpenPasswordPane(u.Id, u.UserName)" disabled="@_busy">重置密码</button>
-                                <button type="button" class="btn btn-outline-danger" @onclick="() => OpenDeletePane(u.Id)" disabled="@(_busy || IsCurrentUser(u.Id))">删除</button>
-                            </div>
-                        </td>
-                    </tr>
+                    <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                    </div>
                 }
-                </tbody>
-            </table>
-        </div>
-    }
+            </div>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="服务端导入 .xlsx，工作表名 Users">
+                <i class="bi bi-upload me-1"></i>导入
+                <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
+            </label>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+        </ToolbarEnd>
+    </EvolverDataTable>
 }
 else if (_pane == UserPane.Create)
 {
@@ -123,6 +125,12 @@ else if (_pane == UserPane.Create)
                         <div class="invalid-feedback d-block">@phErr</div>
                     }
                 </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="createActive" @bind="_cIsActive" />
+                        <label class="form-check-label" for="createActive">账户启用（正常）；关闭则为停用，不可登录</label>
+                    </div>
+                </div>
             </div>
             @if (_roleOptions.Count > 0)
             {
@@ -165,12 +173,24 @@ else if (_pane == UserPane.Create)
         </div>
     </div>
 }
-else if (_pane == UserPane.Edit && _editDetail is not null)
+else if (_pane == UserPane.Edit)
 {
     <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回用户列表</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync"
+                disabled="@(_busy && _editDetail is not null)">返回用户列表</button>
     </div>
 
+    @if (_editDetail is null)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                <p class="mt-3 mb-0 text-muted">正在加载用户资料…</p>
+            </div>
+        </div>
+    }
+    else
+    {
     <div class="card shadow-sm">
         <div class="card-header">编辑用户 — @_editDetail.UserName</div>
         <div class="card-body">
@@ -196,6 +216,12 @@ else if (_pane == UserPane.Edit && _editDetail is not null)
                     {
                         <div class="invalid-feedback d-block">@epErr</div>
                     }
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="editActive" @bind="_eIsActive" />
+                        <label class="form-check-label" for="editActive">账户启用（正常）；关闭则为停用，不可登录</label>
+                    </div>
                 </div>
             </div>
             @if (_roleOptions.Count > 0)
@@ -238,6 +264,7 @@ else if (_pane == UserPane.Edit && _editDetail is not null)
             </div>
         </div>
     </div>
+    }
 }
 else if (_pane == UserPane.ResetPassword && _passwordUserId is not null)
 {
@@ -287,7 +314,14 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
 @code {
     private enum UserPane { List, Create, Edit, ResetPassword, DeleteConfirm }
 
+    private const string UserTableHostId = "evolver-user-tabulator-host";
+
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions TabulatorJsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     private static readonly Regex EmailRegex = new(
         @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
@@ -312,6 +346,7 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     private string? _cPhone;
     private readonly HashSet<string> _cRoles = new(StringComparer.Ordinal);
     private readonly HashSet<long> _cOrgIds = new();
+    private bool _cIsActive = true;
 
     private bool _createAttempted;
     private bool _editAttempted;
@@ -323,6 +358,7 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     private string? _ePhone;
     private readonly HashSet<string> _eRoles = new(StringComparer.Ordinal);
     private readonly HashSet<long> _eOrgIds = new();
+    private bool _eIsActive = true;
 
     private long? _passwordUserId;
     private string _passwordUserLabel = "";
@@ -330,19 +366,46 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
 
     private long? _deleteId;
 
+    private string _globalFilter = "";
+    private bool _exportMenuOpen;
+    private bool _exportClickOutsideRegistered;
+    private ElementReference _exportDropdownRoot;
+    private int _dataTick;
+    private int _tabulatorSyncedTick = -1;
+    private DotNetObjectReference<UserManagement>? _dotNetRef;
+
     protected override async Task OnInitializedAsync()
     {
         _currentUserId = JwtUserIdReader.TryGetUserId(Tokens.AccessToken);
         await ReloadAllAsync();
     }
 
-    private bool IsCurrentUser(long id) => _currentUserId == id;
-
+    // 刷新：清空检索与导出菜单，销毁表格实例以恢复首次加载的默认排序/分页/筛选，再拉取接口数据重建表
     private async Task ReloadAllAsync()
     {
         _error = null;
         _success = null;
+        _globalFilter = "";
+        _exportMenuOpen = false;
+
+        if (_exportClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        if (_pane == UserPane.List && _tabulatorSyncedTick >= 0)
+        {
+            await DestroyTabulatorAsync();
+            _tabulatorSyncedTick = -1;
+        }
+
         await Task.WhenAll(LoadUsersAsync(), LoadRolesAsync(), LoadOrgTreeAsync());
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task CancelToListAsync()
@@ -359,6 +422,188 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
         await LoadUsersAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pane != UserPane.List)
+        {
+            if (_tabulatorSyncedTick >= 0)
+            {
+                await DestroyTabulatorAsync();
+                _tabulatorSyncedTick = -1;
+            }
+            if (_exportClickOutsideRegistered)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+                }
+                catch (JSDisconnectedException) { }
+                _exportClickOutsideRegistered = false;
+            }
+            return;
+        }
+
+        if (_exportMenuOpen && !_exportClickOutsideRegistered)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync(
+                    "evolverUi.startExportMenuClickOutside",
+                    _exportDropdownRoot,
+                    _dotNetRef,
+                    nameof(OnExportMenuClickOutside));
+                _exportClickOutsideRegistered = true;
+            }
+            catch (JSDisconnectedException) { }
+        }
+        else if (!_exportMenuOpen && _exportClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        if (_users is null)
+            return;
+
+        if (_dataTick == _tabulatorSyncedTick)
+            return;
+
+        await SyncUserTabulatorToDomAsync();
+    }
+
+    // 将内存中的用户列表同步到 Tabulator（供 OnAfterRender 与导入完成后显式刷新）
+    private async Task SyncUserTabulatorToDomAsync()
+    {
+        if (_users is null)
+            return;
+        try
+        {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            var json = JsonSerializer.Serialize(
+                _users.Select(u => new
+                {
+                    id = u.Id,
+                    userName = u.UserName,
+                    email = u.Email,
+                    phoneNumber = u.PhoneNumber,
+                    rolesText = string.Join(", ", u.Roles),
+                    statusText = u.IsActive ? "正常" : "停用",
+                    isActive = u.IsActive
+                }).ToList(),
+                TabulatorJsonOpts);
+            await EvolverDataTableInterop.SyncAsync(JS, UserTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Users, _currentUserId);
+            _tabulatorSyncedTick = _dataTick;
+            await ApplyGlobalFilterJsAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // WASM 已卸载
+        }
+    }
+
+    private async Task DestroyTabulatorAsync()
+    {
+        try
+        {
+            await EvolverDataTableInterop.DestroyAsync(JS, UserTableHostId);
+        }
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task TabulatorDownloadAsync(string format)
+    {
+        try
+        {
+            await EvolverDataTableInterop.DownloadAsync(JS, UserTableHostId, format);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task ExportAndCloseAsync(string format)
+    {
+        _exportMenuOpen = false;
+        if (_busy)
+            return;
+        _busy = true;
+        await WaitCursorInterop.SetAsync(JS, true);
+        try
+        {
+            await TabulatorDownloadAsync(format);
+        }
+        finally
+        {
+            _busy = false;
+            await WaitCursorInterop.SetAsync(JS, false);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnExportMenuClickOutside()
+    {
+        if (!_exportMenuOpen)
+            return Task.CompletedTask;
+        _exportMenuOpen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnGlobalFilterInput(ChangeEventArgs e)
+    {
+        _globalFilter = e.Value?.ToString() ?? "";
+        await ApplyGlobalFilterJsAsync();
+    }
+
+    private async Task ApplyGlobalFilterJsAsync()
+    {
+        try
+        {
+            await EvolverDataTableInterop.SetGlobalFilterAsync(JS, UserTableHostId, _globalFilter);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public async Task OnUserTableEdit(long id) => await OpenEditAsync(id);
+
+    // 删除 / 重置密码：从 JS 回调切子页后须 InvokeAsync(StateHasChanged)，否则界面可能延迟到下一次操作才更新。
+    [JSInvokable]
+    public async Task OnUserTablePassword(long id, string userName)
+    {
+        OpenPasswordPane(id, userName ?? "");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnUserTableDelete(long id)
+    {
+        OpenDeletePane(id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_exportClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        await DestroyTabulatorAsync();
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+
     private async Task OpenCreateAsync()
     {
         _error = null;
@@ -369,6 +614,7 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
         _cPhone = null;
         _cRoles.Clear();
         _cOrgIds.Clear();
+        _cIsActive = true;
         _createAttempted = false;
         if (_orgRoots.Count == 0)
             await LoadOrgTreeAsync();
@@ -379,6 +625,11 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     {
         _error = null;
         _success = null;
+        _editId = id;
+        _editDetail = null;
+        _pane = UserPane.Edit;
+        await InvokeAsync(StateHasChanged);
+
         _busy = true;
         try
         {
@@ -389,10 +640,12 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             if (env?.Success != true || env.Data is null)
             {
                 _error = env?.Message ?? "无法加载用户详情。";
+                _pane = UserPane.List;
+                _editDetail = null;
+                await InvokeAsync(StateHasChanged);
                 return;
             }
 
-            _editId = id;
             _editDetail = env.Data;
             _eEmail = env.Data.Email;
             _ePhone = env.Data.PhoneNumber;
@@ -403,17 +656,21 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             foreach (var o in env.Data.OrganizationIds)
                 _eOrgIds.Add(o);
 
+            _eIsActive = env.Data.IsActive;
             _editAttempted = false;
-            _pane = UserPane.Edit;
         }
         catch (Exception ex)
         {
             _error = ex.Message;
+            _pane = UserPane.List;
+            _editDetail = null;
         }
         finally
         {
             _busy = false;
         }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void OpenPasswordPane(long id, string userName)
@@ -433,6 +690,51 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
         _success = null;
         _deleteId = id;
         _pane = UserPane.DeleteConfirm;
+    }
+
+    private async Task ImportExcelAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy || e.FileCount == 0)
+            return;
+        _busy = true;
+        await WaitCursorInterop.SetAsync(JS, true);
+        _error = null;
+        _success = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20_000_000);
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(stream);
+            content.Add(fileContent, "file", e.File.Name);
+            var resp = await Http.PostAsync("api/users/import", content);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<UserImportResultDto>>(text, JsonOpts);
+            if (env?.Success == true && env.Data is { } r)
+            {
+                _success = $"导入完成：新建 {r.Created}，更新 {r.Updated}，跳过 {r.Skipped}。";
+                if (r.Messages.Count > 0)
+                    _success += " " + string.Join(" ", r.Messages.Take(5));
+            }
+            else
+                _error = env?.Message ?? "导入失败。";
+            await LoadUsersAsync();
+            if (_pane == UserPane.List)
+                await SyncUserTabulatorToDomAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            await WaitCursorInterop.SetAsync(JS, false);
+        }
     }
 
     private static int PasswordCharacterClassCount(string p)
@@ -584,6 +886,10 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             _error = ex.Message;
             _users = new();
         }
+        finally
+        {
+            _dataTick++;
+        }
     }
 
     private async Task LoadRolesAsync()
@@ -629,6 +935,7 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
                 _cPassword,
                 string.IsNullOrWhiteSpace(_cEmail) ? null : _cEmail.Trim(),
                 string.IsNullOrWhiteSpace(_cPhone) ? null : _cPhone.Trim(),
+                _cIsActive,
                 _cRoles.Count > 0 ? _cRoles.ToList() : null);
 
             var resp = await Http.PostAsJsonAsync("api/users", dto);
@@ -680,6 +987,7 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             var put = new UpdateUserDto(
                 string.IsNullOrWhiteSpace(_eEmail) ? null : _eEmail.Trim(),
                 _ePhone,
+                _eIsActive,
                 null);
 
             var putResp = await Http.PutAsJsonAsync($"api/users/{_editId}", put);

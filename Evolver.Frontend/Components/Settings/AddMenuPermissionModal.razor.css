@@ -1,0 +1,7 @@
+.add-menu-perm-backdrop {
+    z-index: 1040;
+}
+
+.add-menu-perm-modal {
+    z-index: 1050;
+}

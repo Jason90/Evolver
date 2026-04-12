@@ -2,9 +2,10 @@ using System.Text;
 using Evolver.Application.Security;
 using Evolver.Core.Entities;
 using Evolver.Core.MultiTenancy;
-using Evolver.Infrastructure.Persistence;
-using Evolver.Web.Filters;
 using Evolver.Web.Security;
+using Evolver.Infrastructure.Persistence;
+using Evolver.Infrastructure.Persistence.Identity;
+using Evolver.Web.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -120,17 +121,46 @@ public static class EvolverWebServiceCollectionExtensions
     /// </summary>
     public static IdentityBuilder AddEvolverIdentity(this IServiceCollection services)
     {
-        return services.AddIdentityCore<AppUser>(options =>
+        var builder = services.AddIdentityCore<AppUser>(options =>
             {
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireUppercase = false;
                 options.Password.RequireLowercase = false;
                 options.Password.RequireDigit = false;
                 options.Password.RequiredLength = 6;
+                options.User.RequireUniqueEmail = false;
             })
             .AddRoles<AppRole>()
             .AddEntityFrameworkStores<AppDbContext>()
-            .AddSignInManager();
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        // 替换 Identity 默认验证器（全局唯一角色名/用户名），否则多租户无法各自使用 Admin、同名用户。
+        foreach (var d in services.ToList())
+        {
+            if (d.ServiceType == typeof(IRoleValidator<AppRole>))
+                services.Remove(d);
+            if (d.ServiceType == typeof(IUserValidator<AppUser>))
+                services.Remove(d);
+        }
+
+        services.AddScoped<IRoleValidator<AppRole>, TenantScopedRoleValidator>();
+        services.AddScoped<IUserValidator<AppUser>, TenantScopedUserValidator>();
+
+        // 替换 EF 默认 UserStore/RoleStore：FindByName 必须带 TenantId，否则多租户同名角色/用户会触发
+        // SingleOrDefault「Sequence contains more than one element」。
+        foreach (var d in services.ToList())
+        {
+            if (d.ServiceType == typeof(IRoleStore<AppRole>))
+                services.Remove(d);
+            if (d.ServiceType == typeof(IUserStore<AppUser>))
+                services.Remove(d);
+        }
+
+        services.AddScoped<IRoleStore<AppRole>, TenantAwareRoleStore>();
+        services.AddScoped<IUserStore<AppUser>, TenantAwareUserStore>();
+
+        return builder;
     }
 
     /// <summary>

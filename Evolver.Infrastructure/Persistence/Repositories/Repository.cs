@@ -45,19 +45,16 @@ public sealed class Repository<TEntity> : IRepository<TEntity> where TEntity : B
     public void Update(TEntity entity) =>
         _db.Set<TEntity>().Update(entity);
 
-    public void SoftDelete(TEntity entity)
-    {
-        entity.IsDeleted = true;
-        _db.Set<TEntity>().Update(entity);
-    }
+    public void Delete(TEntity entity) =>
+        _db.Set<TEntity>().Remove(entity);
 
-    public async Task<bool> SoftDeleteByIdAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var entity = await GetByIdAsync(id, ignoreQueryFilters: false, asNoTracking: false, cancellationToken)
             .ConfigureAwait(false);
         if (entity is null)
             return false;
-        SoftDelete(entity);
+        Delete(entity);
         return true;
     }
 

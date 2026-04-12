@@ -1,0 +1,159 @@
+@namespace Evolver.Frontend.Components.Settings
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+
+<div class="border rounded p-3 bg-light">
+    <h5 class="mb-3">分配权限 — <span class="text-primary">@_roleName</span></h5>
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger py-2">@_error</div>
+    }
+    @if (_loading)
+    {
+        <p class="text-muted mb-0">加载权限树…</p>
+    }
+    else if (_flat.Count == 0)
+    {
+        <p class="text-muted mb-0">暂无权限数据。</p>
+    }
+    else
+    {
+        <div class="permission-check-scroll border rounded bg-white p-2 mb-3" style="max-height:22rem;overflow:auto">
+            @foreach (var item in _flat)
+            {
+                <div class="form-check" style="padding-left:@($"{2.25 + item.Depth * 1.25}rem")">
+                    <input class="form-check-input" type="checkbox" id="@($"rp-{RoleId}-{item.Id}")"
+                           checked="@_selected.Contains(item.Id)"
+                           @onchange="e => Toggle(item.Id, e)" />
+                    <label class="form-check-label small" for="@($"rp-{RoleId}-{item.Id}")">@item.Code <span class="text-muted">@item.Name</span></label>
+                </div>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary btn-sm" @onclick="SaveAsync" disabled="@_busy">保存权限</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CloseAsync" disabled="@_busy">关闭</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public long RoleId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string RoleName { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public EventCallback OnClose { get; set; }
+
+    /// <summary>保存权限成功后调用（便于父级提示）。</summary>
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private string _roleName = "";
+    private string? _error;
+    private bool _loading = true;
+    private bool _busy;
+    private readonly HashSet<long> _selected = new();
+    private List<(long Id, string Code, string Name, int Depth)> _flat = new();
+    private long _loadedForRoleId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _roleName = RoleName;
+        if (RoleId <= 0)
+            return;
+        if (RoleId == _loadedForRoleId)
+            return;
+        _loadedForRoleId = RoleId;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        _selected.Clear();
+        _flat.Clear();
+        try
+        {
+            var treeEnv = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<PermissionTreeNodeDto>>>("api/permissions/tree");
+            var roots = treeEnv?.Success == true ? treeEnv.Data ?? new() : new List<PermissionTreeNodeDto>();
+            Flatten(roots, _flat, 0);
+
+            var idsEnv = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<long>>>($"api/roles/{RoleId}/permissions");
+            if (idsEnv?.Success == true && idsEnv.Data is { } ids)
+            {
+                foreach (var id in ids)
+                    _selected.Add(id);
+            }
+            else if (idsEnv?.Success == false)
+                _error = idsEnv.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static void Flatten(IReadOnlyList<PermissionTreeNodeDto> nodes, List<(long Id, string Code, string Name, int Depth)> acc, int depth)
+    {
+        foreach (var n in nodes)
+        {
+            acc.Add((n.Id, n.Code, n.Name, depth));
+            if (n.Children is { Count: > 0 })
+                Flatten(n.Children, acc, depth + 1);
+        }
+    }
+
+    private void Toggle(long id, ChangeEventArgs e)
+    {
+        var on = e.Value switch
+        {
+            bool b => b,
+            string s => bool.TryParse(s, out var x) && x,
+            _ => false
+        };
+        if (on)
+            _selected.Add(id);
+        else
+            _selected.Remove(id);
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"api/roles/{RoleId}/permissions", new SetRolePermissionsDto(_selected.ToList()));
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<object>>(text,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _error = env?.Message ?? text;
+                return;
+            }
+
+            await OnSaved.InvokeAsync();
+            await OnClose.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

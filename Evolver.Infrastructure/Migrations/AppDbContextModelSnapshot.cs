@@ -26,21 +26,12 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("DocumentNo")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateOnly>("DueDate")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
@@ -84,12 +75,6 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<long?>("CustomerId")
                         .HasColumnType("INTEGER");
 
@@ -99,9 +84,6 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<DateOnly>("DueDate")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
@@ -143,14 +125,10 @@ namespace Evolver.Infrastructure.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
@@ -175,8 +153,11 @@ namespace Evolver.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
-                        .IsUnique()
                         .HasDatabaseName("RoleNameIndex");
+
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique()
+                        .HasFilter("IsDeleted = 0");
 
                     b.ToTable("AspNetRoles", (string)null);
                 });
@@ -194,12 +175,6 @@ namespace Evolver.Infrastructure.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -207,7 +182,7 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsDeleted")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("LockoutEnabled")
@@ -261,8 +236,10 @@ namespace Evolver.Infrastructure.Migrations
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
-                        .IsUnique()
                         .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("TenantId", "NormalizedUserName")
+                        .IsUnique();
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -272,12 +249,6 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
 
                     b.Property<DateOnly?>("EffectiveFrom")
                         .HasColumnType("TEXT");
@@ -289,9 +260,6 @@ namespace Evolver.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
@@ -326,15 +294,6 @@ namespace Evolver.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("ComponentProductId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
@@ -385,20 +344,11 @@ namespace Evolver.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("CustomerType")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Email")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("MemberNo")
                         .HasColumnType("TEXT");
@@ -440,20 +390,11 @@ namespace Evolver.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ItemCode")
@@ -465,6 +406,9 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("INTEGER");
@@ -486,23 +430,57 @@ namespace Evolver.Infrastructure.Migrations
                     b.ToTable("DataDictionaryItems");
                 });
 
+            modelBuilder.Entity("Evolver.Core.Entities.DataDictionaryType", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TypeCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TypeName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrgId", "TypeCode")
+                        .IsUnique();
+
+                    b.ToTable("DataDictionaryTypes");
+                });
+
             modelBuilder.Entity("Evolver.Core.Entities.InventorySnapshot", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("CurrentStock")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastUpdateTime")
                         .HasColumnType("TEXT");
@@ -557,15 +535,6 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<decimal>("BeforeQuantity")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime>("OccurredAt")
                         .HasColumnType("TEXT");
 
@@ -612,15 +581,6 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -654,20 +614,11 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<DateOnly>("AsOfDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("CurrentStock")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("GapToPar")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<long>("MarketId")
                         .HasColumnType("INTEGER");
@@ -721,12 +672,6 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<long>("CustomerId")
                         .HasColumnType("INTEGER");
 
@@ -734,9 +679,6 @@ namespace Evolver.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
@@ -776,16 +718,7 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<decimal>("BalanceAfter")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<long>("CustomerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
@@ -827,17 +760,8 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<DateOnly>("AsOfDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("GrossProfit")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<long>("MarketId")
                         .HasColumnType("INTEGER");
@@ -902,17 +826,8 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<DateOnly>("CostDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
@@ -947,19 +862,10 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<long?>("ActorUserId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Detail")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("FromStatus")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("OccurredAt")
@@ -996,15 +902,6 @@ namespace Evolver.Infrastructure.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -1048,13 +945,19 @@ namespace Evolver.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
+                    b.Property<string>("ComponentPath")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsDeleted")
+                    b.Property<string>("Icon")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsExternalLink")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsVisible")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -1069,6 +972,9 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<string>("Resource")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("TenantId")
                         .HasColumnType("INTEGER");
@@ -1112,15 +1018,6 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<decimal?>("CostAmount")
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1176,15 +1073,6 @@ namespace Evolver.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1222,15 +1110,6 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<decimal>("ActualQuantity")
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT");
@@ -1281,15 +1160,6 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<decimal>("IssuedQuantity")
                         .HasColumnType("TEXT");
 
@@ -1334,15 +1204,6 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<decimal>("ActualQuantity")
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
@@ -1392,15 +1253,6 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<int>("Bucket")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
 
@@ -1435,17 +1287,8 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<DateTime>("CalculatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<decimal>("GrossProfit")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("NetProfit")
                         .HasColumnType("TEXT");
@@ -1482,17 +1325,8 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateOnly?>("ExpectedDate")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT");
@@ -1536,15 +1370,6 @@ namespace Evolver.Infrastructure.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("LineAmount")
@@ -1592,15 +1417,6 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
 
@@ -1637,17 +1453,8 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateOnly>("Date")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
 
                     b.Property<long>("MarketId")
                         .HasColumnType("INTEGER");
@@ -1696,16 +1503,7 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<long>("CustomerId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
@@ -1763,15 +1561,6 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<decimal>("LineAmount")
                         .HasColumnType("TEXT");
 
@@ -1827,15 +1616,6 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<string>("ContactPhone")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1869,12 +1649,6 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
@@ -1897,7 +1671,8 @@ namespace Evolver.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("IsDeleted = 0");
 
                     b.ToTable("Tenants");
                 });
@@ -1906,15 +1681,6 @@ namespace Evolver.Infrastructure.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("CreateBy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("OrgId")

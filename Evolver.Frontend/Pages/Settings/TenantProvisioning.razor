@@ -1,0 +1,711 @@
+@page "/settings/tenants"
+@attribute [Authorize]
+@using System.Linq
+@using System.Text.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+
+<PageTitle>租户管理</PageTitle>
+
+<h1 class="mb-2">租户管理</h1>
+<p class="text-muted mb-3">为新的公司创建独立租户、根组织、权限副本与管理员账号。仅平台租户（默认 Id=1）的 Admin 可使用。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+@if (_pane == TenantPane.List)
+{
+    <EvolverDataTable TableHostId="@TenantTableHostId" Loading="@(_tenants is null)">
+        <ToolbarStart>
+            <div class="position-relative">
+                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
+                      aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                    </svg>
+                </span>
+                <label class="visually-hidden" for="tenant-global-filter">全文检索</label>
+                <input id="tenant-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
+                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            </div>
+        </ToolbarStart>
+        <ToolbarEnd>
+            <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreateAsync" disabled="@_busy">
+                <i class="bi bi-plus-lg me-1"></i>新增
+            </button>
+            <div @ref="_exportDropdownRoot" class="dropdown position-relative">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                        @onclick="() => _exportMenuOpen = !_exportMenuOpen"
+                        disabled="@(_busy || _tenants is null)">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+                @if (_exportMenuOpen)
+                {
+                    <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                    </div>
+                }
+            </div>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="服务端导入 .xlsx，工作表名 Tenants">
+                <i class="bi bi-upload me-1"></i>导入
+                <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
+            </label>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+        </ToolbarEnd>
+    </EvolverDataTable>
+}
+else if (_pane == TenantPane.Create)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回租户列表</button>
+    </div>
+
+    <div class="card shadow-sm" style="max-width:32rem">
+        <div class="card-header">新建租户</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">新公司 / 租户名称 <span class="text-danger">*</span></label>
+                <input class="form-control" @bind="_tenantName" @bind:event="oninput" disabled="@_busy" autocomplete="organization" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">根组织名称</label>
+                <input class="form-control" @bind="_rootOrgName" @bind:event="oninput" disabled="@_busy" placeholder="默认：总部" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">管理员用户名 <span class="text-danger">*</span></label>
+                <input class="form-control" @bind="_adminUser" @bind:event="oninput" disabled="@_busy" autocomplete="username" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">管理员初始密码 <span class="text-danger">*</span></label>
+                <input class="form-control" type="password" @bind="_adminPassword" @bind:event="oninput" disabled="@_busy" autocomplete="new-password" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">管理员邮箱（可选）</label>
+                <input class="form-control" type="email" @bind="_adminEmail" @bind:event="oninput" disabled="@_busy" />
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="SubmitCreateAsync" disabled="@_busy">保存</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+else if (_pane == TenantPane.Edit)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回租户列表</button>
+    </div>
+
+    @if (_editDetail is null)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                <p class="mt-3 mb-0 text-muted">正在加载租户…</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm" style="max-width:32rem">
+            <div class="card-header">编辑租户 — Id @_editDetail.Id</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">租户 Id</label>
+                    <input class="form-control" value="@_editDetail.Id.ToString()" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">租户名称 <span class="text-danger">*</span></label>
+                    <input class="form-control @(string.IsNullOrEmpty(_editNameError) ? "" : "is-invalid")"
+                           @bind="_editName" @bind:event="oninput" disabled="@_busy" />
+                    @if (_editNameError is { } enErr)
+                    {
+                        <div class="invalid-feedback d-block">@enErr</div>
+                    }
+                </div>
+                @if (_editDetail.Id == _platformTenantId)
+                {
+                    <p class="text-muted small">平台租户名称不可修改。</p>
+                }
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@(_busy || _editDetail.Id == _platformTenantId)">保存</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回租户列表</button>
+    </div>
+
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">确认删除</div>
+        <div class="card-body">
+            <p class="mb-3">确定逻辑删除租户 <strong>@_deleteLabel</strong>（Id <strong>@_deleteId</strong>）？删除后列表不再显示，数据仍保留在库中。</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum TenantPane { List, Create, Edit, DeleteConfirm }
+
+    private const string TenantTableHostId = "evolver-tenant-tabulator-host";
+
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions TabulatorJsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    private string? _error;
+    private string? _success;
+    private bool _busy;
+    private TenantPane _pane = TenantPane.List;
+
+    private List<TenantListItemDto>? _tenants;
+
+    private string _tenantName = "";
+    private string _rootOrgName = "总部";
+    private string _adminUser = "";
+    private string _adminPassword = "";
+    private string _adminEmail = "";
+
+    private int _editId;
+    private TenantListItemDto? _editDetail;
+    private string _editName = "";
+    private string? _editNameError;
+
+    private int? _deleteId;
+    private string _deleteLabel = "";
+
+    private int _platformTenantId = 1;
+
+    private string _globalFilter = "";
+    private bool _exportMenuOpen;
+    private bool _exportClickOutsideRegistered;
+    private ElementReference _exportDropdownRoot;
+    private int _dataTick;
+    private int _tabulatorSyncedTick = -1;
+    private DotNetObjectReference<TenantProvisioning>? _dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _platformTenantId = Configuration.GetValue<int?>("Platform:PlatformTenantId") ?? 1;
+        await ReloadAllAsync();
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null;
+        _success = null;
+        _globalFilter = "";
+        _exportMenuOpen = false;
+
+        if (_exportClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        if (_pane == TenantPane.List && _tabulatorSyncedTick >= 0)
+        {
+            await DestroyTabulatorAsync();
+            _tabulatorSyncedTick = -1;
+        }
+
+        await LoadTenantsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CancelToListAsync()
+    {
+        _pane = TenantPane.List;
+        _editDetail = null;
+        _editNameError = null;
+        _deleteId = null;
+        _deleteLabel = "";
+        await LoadTenantsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pane != TenantPane.List)
+        {
+            if (_tabulatorSyncedTick >= 0)
+            {
+                await DestroyTabulatorAsync();
+                _tabulatorSyncedTick = -1;
+            }
+            if (_exportClickOutsideRegistered)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+                }
+                catch (JSDisconnectedException) { }
+                _exportClickOutsideRegistered = false;
+            }
+            return;
+        }
+
+        if (_exportMenuOpen && !_exportClickOutsideRegistered)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync(
+                    "evolverUi.startExportMenuClickOutside",
+                    _exportDropdownRoot,
+                    _dotNetRef,
+                    nameof(OnExportMenuClickOutside));
+                _exportClickOutsideRegistered = true;
+            }
+            catch (JSDisconnectedException) { }
+        }
+        else if (!_exportMenuOpen && _exportClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        if (_tenants is null)
+            return;
+
+        if (_dataTick == _tabulatorSyncedTick)
+            return;
+
+        await SyncTenantTabulatorToDomAsync();
+    }
+
+    private async Task SyncTenantTabulatorToDomAsync()
+    {
+        if (_tenants is null)
+            return;
+        try
+        {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            var json = JsonSerializer.Serialize(
+                _tenants.Select(t => new
+                {
+                    id = t.Id,
+                    name = t.Name,
+                    rootOrgName = t.RootOrgName,
+                    adminUserName = t.AdminUserName,
+                    adminEmail = t.AdminEmail ?? "",
+                    canDelete = t.Id != _platformTenantId
+                }).ToList(),
+                TabulatorJsonOpts);
+            await EvolverDataTableInterop.SyncAsync(JS, TenantTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Tenants, null);
+            _tabulatorSyncedTick = _dataTick;
+            await ApplyGlobalFilterJsAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task DestroyTabulatorAsync()
+    {
+        try
+        {
+            await EvolverDataTableInterop.DestroyAsync(JS, TenantTableHostId);
+        }
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task TabulatorDownloadAsync(string format)
+    {
+        try
+        {
+            await EvolverDataTableInterop.DownloadAsync(JS, TenantTableHostId, format);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task ExportAndCloseAsync(string format)
+    {
+        _exportMenuOpen = false;
+        if (_busy)
+            return;
+        _busy = true;
+        await WaitCursorInterop.SetAsync(JS, true);
+        try
+        {
+            await TabulatorDownloadAsync(format);
+        }
+        finally
+        {
+            _busy = false;
+            await WaitCursorInterop.SetAsync(JS, false);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnExportMenuClickOutside()
+    {
+        if (!_exportMenuOpen)
+            return Task.CompletedTask;
+        _exportMenuOpen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnGlobalFilterInput(ChangeEventArgs e)
+    {
+        _globalFilter = e.Value?.ToString() ?? "";
+        await ApplyGlobalFilterJsAsync();
+    }
+
+    private async Task ApplyGlobalFilterJsAsync()
+    {
+        try
+        {
+            await EvolverDataTableInterop.SetGlobalFilterAsync(JS, TenantTableHostId, _globalFilter);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public async Task OnTenantTableEdit(int id) => await OpenEditAsync(id);
+
+    [JSInvokable]
+    public async Task OnTenantTableDelete(int id, string name)
+    {
+        OpenDeletePane(id, name ?? "");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_exportClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        await DestroyTabulatorAsync();
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+
+    private void OpenDeletePane(int id, string name)
+    {
+        _error = null;
+        _success = null;
+        _deleteId = id;
+        _deleteLabel = string.IsNullOrWhiteSpace(name) ? $"Id {id}" : name;
+        _pane = TenantPane.DeleteConfirm;
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy || _deleteId is not { } id)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/tenants/{id}");
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = "租户已逻辑删除。";
+            await CancelToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        if (_pane == TenantPane.List)
+            await SyncTenantTabulatorToDomAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenCreateAsync()
+    {
+        _error = null;
+        _success = null;
+        _tenantName = "";
+        _rootOrgName = "总部";
+        _adminUser = "";
+        _adminPassword = "";
+        _adminEmail = "";
+        _pane = TenantPane.Create;
+    }
+
+    private async Task OpenEditAsync(int id)
+    {
+        _error = null;
+        _success = null;
+        _editId = id;
+        _editDetail = null;
+        _editNameError = null;
+        _pane = TenantPane.Edit;
+
+        // 列表数据已在内存中，直接打开编辑（避免依赖 GET api/tenants/{id}，防止旧后端未注册该路由时出现 404）
+        var local = _tenants?.FirstOrDefault(t => t.Id == id);
+        if (local is not null)
+        {
+            _editDetail = local;
+            _editName = local.Name;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
+        _busy = true;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<TenantListItemDto>>($"api/tenants/{id}");
+            if (env?.Success != true || env.Data is null)
+            {
+                _error = env?.Message ?? "无法加载租户。";
+                _pane = TenantPane.List;
+                _editDetail = null;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            _editDetail = env.Data;
+            _editName = env.Data.Name;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _pane = TenantPane.List;
+            _editDetail = null;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_busy || _editDetail is null || _editDetail.Id == _platformTenantId)
+            return;
+
+        _editNameError = string.IsNullOrWhiteSpace(_editName) ? "请输入租户名称。" : null;
+        if (_editNameError is not null)
+            return;
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.PutAsJsonAsync($"api/tenants/{_editId}", new UpdateTenantDto(_editName.Trim()));
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = "租户名称已更新。";
+            await CancelToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        if (_pane == TenantPane.List)
+            await SyncTenantTabulatorToDomAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SubmitCreateAsync()
+    {
+        if (_busy)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var dto = new ProvisionTenantRequestDto(
+                _tenantName.Trim(),
+                _adminUser.Trim(),
+                _adminPassword,
+                string.IsNullOrWhiteSpace(_rootOrgName) ? null : _rootOrgName.Trim(),
+                string.IsNullOrWhiteSpace(_adminEmail) ? null : _adminEmail.Trim());
+
+            var resp = await Http.PostAsJsonAsync("api/tenants/provision", dto);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<ProvisionTenantResponseDto>>(text, JsonOpts);
+            if (env?.Success == true && env.Data is { } data)
+            {
+                _success =
+                    $"已创建租户 Id={data.TenantId}（{data.TenantName}），根组织「{data.RootOrgName}」，管理员「{data.AdminUserName}」。新管理员登录时请在登录页填写租户编号 {data.TenantId}（若全库仅有一个该用户名，可不填）。";
+                _adminPassword = "";
+                await CancelToListAsync();
+            }
+            else
+                _error = env?.Message ?? "创建失败。";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        if (_pane == TenantPane.List)
+            await SyncTenantTabulatorToDomAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ImportExcelAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy || e.FileCount == 0)
+            return;
+        _busy = true;
+        await WaitCursorInterop.SetAsync(JS, true);
+        _error = null;
+        _success = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20_000_000);
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(stream);
+            content.Add(fileContent, "file", e.File.Name);
+            var resp = await Http.PostAsync("api/tenants/import", content);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<TenantImportResultDto>>(text, JsonOpts);
+            if (env?.Success == true && env.Data is { } r)
+            {
+                _success = $"导入完成：新建 {r.Created}，跳过 {r.Skipped}。";
+                if (r.Messages.Count > 0)
+                    _success += " " + string.Join(" ", r.Messages.Take(5));
+            }
+            else
+                _error = env?.Message ?? "导入失败。";
+            await LoadTenantsAsync();
+            if (_pane == TenantPane.List)
+                await SyncTenantTabulatorToDomAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            await WaitCursorInterop.SetAsync(JS, false);
+        }
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<TenantListItemDto>>>("api/tenants");
+            _tenants = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _tenants = new();
+        }
+        finally
+        {
+            _dataTick++;
+        }
+    }
+
+    private static string ReadErrorText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "请求失败。";
+        try
+        {
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<JsonElement>>(text, JsonOpts);
+            if (!string.IsNullOrEmpty(env?.Message))
+                return env.Message!;
+        }
+        catch
+        {
+        }
+
+        return text.Length > 400 ? text[..400] + "…" : text;
+    }
+}

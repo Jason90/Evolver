@@ -1,0 +1,53 @@
+/**
+ * 用户表 Tabulator 样式覆盖。
+ * 必须在 index.html 中位于 tabulator_bootstrap5.min.css **之后** 加载，否则会被主题盖住。
+ */
+.evolver-data-table-host .tabulator .tabulator-footer {
+    background-color: transparent !important;
+    background-image: none !important;
+    color: inherit !important;
+    font-weight: normal !important;
+}
+
+.evolver-data-table-host .tabulator .tabulator-footer .tabulator-footer-contents {
+    background-color: transparent !important;
+}
+
+.evolver-data-table-host .tabulator .tabulator-footer .tabulator-paginator,
+.evolver-data-table-host .tabulator .tabulator-footer .tabulator-page-counter {
+    background-color: transparent !important;
+    color: inherit !important;
+}
+
+/* 状态列：Tabulator Bootstrap5 主题会给单元格/斑马纹行上色，易把 badge 文字洗成浅灰；用独立 pill + 列 class 强制对比度 */
+.evolver-data-table-host .tabulator .tabulator-cell.ev-user-status-col {
+    color: inherit;
+}
+
+.evolver-data-table-host .tabulator .tabulator-row .tabulator-cell.ev-user-status-col .ev-user-status-pill {
+    display: inline-block;
+    padding: 0.22em 0.55em;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* 深色文字 + 浅色底：主题/斑马纹覆盖 pill 背景时，白字会变成「白底白字」 */
+.evolver-data-table-host .tabulator .tabulator-row.tabulator-row-even .tabulator-cell.ev-user-status-col .ev-user-status-pill.ev-user-status--ok,
+.evolver-data-table-host .tabulator .tabulator-row.tabulator-row-odd .tabulator-cell.ev-user-status-col .ev-user-status-pill.ev-user-status--ok,
+.evolver-data-table-host .tabulator .tabulator-cell.ev-user-status-col .ev-user-status-pill.ev-user-status--ok {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+    border: 1px solid #badbcc !important;
+}
+
+.evolver-data-table-host .tabulator .tabulator-row.tabulator-row-even .tabulator-cell.ev-user-status-col .ev-user-status-pill.ev-user-status--off,
+.evolver-data-table-host .tabulator .tabulator-row.tabulator-row-odd .tabulator-cell.ev-user-status-col .ev-user-status-pill.ev-user-status--off,
+.evolver-data-table-host .tabulator .tabulator-cell.ev-user-status-col .ev-user-status-pill.ev-user-status--off {
+    background-color: #e2e3e5 !important;
+    color: #495057 !important;
+    border: 1px solid #ced4da !important;
+}

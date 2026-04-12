@@ -1,0 +1,72 @@
+/**
+ * 功能表格（EvolverDataTable）布局与 Tabulator 外观微调。
+ * 分页行、状态列等仍见 tabulator-user-table.css（须在 tabulator_bootstrap5 之后加载）。
+ */
+
+/* 高度随表格内容收缩，避免 Tabulator 被强制撑满视口导致表体中间大片空白 */
+.evolver-data-table-root {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.evolver-data-table-card {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.evolver-data-table-card .evolver-data-table-table-wrap {
+    flex: 0 0 auto;
+    display: block;
+    padding-top: 0 !important;
+}
+
+.evolver-data-table-card .evolver-data-table-host {
+    display: block;
+    width: 100%;
+    min-height: 0;
+    margin-top: 0;
+}
+
+/* Tabulator 主题有时会给根节点加 margin，导致与工具栏之间出现白条 */
+.evolver-data-table-card .evolver-data-table-host > .tabulator {
+    margin-top: 0 !important;
+}
+
+.evolver-data-table-card .tabulator-bootstrap-overrides .tabulator {
+    font-size: 0.875rem;
+    border-radius: 0.375rem;
+}
+
+.evolver-data-table-card .tabulator-bootstrap-overrides .tabulator .tabulator-header {
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+}
+
+/* EvolverListToolbar：列表顶栏（检索 + 操作），仅占位/微调 */
+.evolver-data-table-card .evolver-list-toolbar {
+    width: 100%;
+}
+
+/* 工具栏内「全文检索」类输入：左侧图标不抢焦点 */
+.evolver-data-table-card .ev-toolbar-search-icon {
+    pointer-events: none;
+    z-index: 3;
+}
+
+.evolver-data-table-card .ev-toolbar-search-icon svg {
+    display: block;
+}
+
+/* 工具栏全文检索：部分浏览器对 type=search 默认样式会弱化/去掉边框，需显式还原 */
+.evolver-data-table-card input.ev-toolbar-search-input.form-control,
+.evolver-data-table-card input[type="search"].form-control {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid var(--bs-border-color, #dee2e6) !important;
+}

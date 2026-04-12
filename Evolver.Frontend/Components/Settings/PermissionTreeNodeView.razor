@@ -12,7 +12,7 @@
         <ul class="list-unstyled ms-2 mt-1">
             @foreach (var c in Node.Children)
             {
-                <PermissionTreeNodeView Node="c" Depth="Depth + 1" />
+                <PermissionTreeNodeView Node="c" Depth="@(Depth + 1)" />
             }
         </ul>
     }

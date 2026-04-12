@@ -3,6 +3,10 @@ using Evolver.Infrastructure.Persistence;
 
 namespace Evolver.Web.Security;
 
+/// <summary>
+/// 须在 <c>UseAuthentication</c> 之后注册，以便从已认证 Principal 读取 Claims（含 NameIdentifier → 租户上下文的 UserId），
+/// 供 AppDbContext 保存时写入审计字段 UpdateBy / UpdateTime。
+/// </summary>
 public sealed class TenantContextMiddleware(RequestDelegate next)
 {
     public async Task Invoke(HttpContext httpContext, TenantContext tenantContext)

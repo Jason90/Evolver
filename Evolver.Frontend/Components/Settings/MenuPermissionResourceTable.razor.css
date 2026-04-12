@@ -1,0 +1,100 @@
+.menu-perm-tree-spacer {
+    display: inline-block;
+    width: 1.1rem;
+}
+
+.menu-perm-tree-toggle {
+    line-height: 1;
+    color: #495057;
+}
+
+.menu-perm-table thead th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.menu-perm-table tbody td {
+    font-size: 0.875rem;
+}
+
+/* 不出现横向滚动条：去掉 Bootstrap .table-responsive 的 overflow-x:auto，并禁止人为 min-width 撑破容器 */
+div.menu-perm-table-responsive.table-responsive {
+    overflow-x: visible;
+    -webkit-overflow-scrolling: auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* 列宽合计 100%，固定布局下在视口内分配；组件路径收窄，操作列保留足够比例靠右 */
+.menu-perm-table {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* 合计 100%，避免 fixed 表格总宽超过 100% 触发横向滚动 */
+.menu-perm-th-name {
+    width: 30%;
+}
+
+.menu-perm-th-type {
+    width: 6%;
+}
+
+.menu-perm-th-sort {
+    width: 5%;
+}
+
+.menu-perm-th-code {
+    width: 27%;
+}
+
+.menu-perm-th-path {
+    width: 8%;
+}
+
+.menu-perm-th-status {
+    width: 6%;
+}
+
+.menu-perm-th-actions {
+    width: 18%;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.menu-perm-td-name {
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.menu-perm-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menu-perm-td-code,
+.menu-perm-td-path {
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.menu-perm-td-actions {
+    width: 18%;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.menu-perm-actions {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    justify-content: flex-end;
+}
+
+.menu-perm-actions .btn {
+    font-size: 0.75rem;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+}

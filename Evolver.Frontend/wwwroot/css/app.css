@@ -101,3 +101,9 @@ a, .btn-link {
 code {
     color: #c02d76;
 }
+
+/* 导入/导出等耗时操作：整页沙漏光标（由 evolverUi.setWaitCursor 切换） */
+html.evolver-wait-cursor,
+html.evolver-wait-cursor * {
+    cursor: wait !important;
+}

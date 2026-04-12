@@ -15,10 +15,9 @@ public sealed class Tenant
 
     public string Name { get; set; } = "";
 
+    /// <summary>逻辑删除；为 true 时列表不展示且名称可被新租户复用（见库索引）。</summary>
     public bool IsDeleted { get; set; }
 
-    public int? CreateBy { get; set; }
-    public DateTime CreateTime { get; set; } = DateTime.UtcNow;
     public int? UpdateBy { get; set; }
     public DateTime? UpdateTime { get; set; }
 }

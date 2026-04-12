@@ -1,0 +1,175 @@
+@namespace Evolver.Frontend.Components.Settings
+@using Evolver.Shared.Dtos
+
+<div class="table-responsive border rounded menu-perm-table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0 menu-perm-table">
+        <thead class="table-light">
+        <tr>
+            <th class="menu-perm-th-name">菜单名称</th>
+            <th class="menu-perm-th-type">类型</th>
+            <th class="menu-perm-th-sort">排序</th>
+            <th class="menu-perm-th-code">权限标识</th>
+            <th class="menu-perm-th-path">组件路径</th>
+            <th class="menu-perm-th-status">状态</th>
+            <th class="menu-perm-th-actions text-end">操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in EnumerateRows(FilteredRoots, 0))
+        {
+            var hasChildren = row.Node.Children is { Count: > 0 };
+            <tr>
+                <td class="menu-perm-td-name">
+                    <div class="d-flex align-items-center min-w-0" style="padding-left:@($"{row.Depth * 1.1}rem")">
+                        @if (hasChildren)
+                        {
+                            <button type="button" class="btn btn-link btn-sm p-0 me-1 flex-shrink-0 menu-perm-tree-toggle" @onclick="() => ToggleCollapse(row.Node.Id)"
+                                    title="@(_collapsed.Contains(row.Node.Id) ? "展开" : "折叠")">
+                                <i class="bi @(_collapsed.Contains(row.Node.Id) ? "bi-caret-right-fill" : "bi-caret-down-fill")" aria-hidden="true"></i>
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="menu-perm-tree-spacer me-1 flex-shrink-0" aria-hidden="true"></span>
+                        }
+                        <span class="text-truncate">@row.Node.Name</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge @BadgeClass(row.Node.DisplayType)">@row.Node.DisplayType</span>
+                </td>
+                <td class="text-muted small">@row.Node.SortOrder</td>
+                <td class="menu-perm-td-code">
+                    <div class="menu-perm-ellipsis small font-monospace" title="@row.Node.Code">@row.Node.Code</div>
+                </td>
+                <td class="menu-perm-td-path">
+                    @{
+                        var pathText = row.Node.ComponentPath ?? row.Node.Resource ?? "—";
+                    }
+                    <div class="menu-perm-ellipsis text-muted small" title="@pathText">@pathText</div>
+                </td>
+                <td class="small menu-perm-td-status">
+                    <span class="@(row.Node.IsEnabled ? "text-success" : "text-secondary")">@(row.Node.IsEnabled ? "正常" : "停用")</span>
+                </td>
+                <td class="menu-perm-td-actions text-end">
+                    <div class="btn-group btn-group-sm menu-perm-actions" role="group" aria-label="操作">
+                        <button type="button" class="btn btn-outline-primary py-0 px-2" @onclick="() => OnEdit.InvokeAsync(row.Node)">修改</button>
+                        <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick="() => OnAddChild.InvokeAsync(row.Node)">新增</button>
+                        <button type="button" class="btn btn-outline-danger py-0 px-2" @onclick="() => OnDelete.InvokeAsync(row.Node)">删除</button>
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<PermissionTreeNodeDto> Roots { get; set; } = Array.Empty<PermissionTreeNodeDto>();
+
+    /// <summary>由页顶工具栏传入的筛选关键字（菜单名称 / 权限标识）。</summary>
+    [Parameter]
+    public string FilterText { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<PermissionTreeNodeDto> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<PermissionTreeNodeDto> OnAddChild { get; set; }
+
+    [Parameter]
+    public EventCallback<PermissionTreeNodeDto> OnDelete { get; set; }
+
+    private readonly HashSet<long> _collapsed = new();
+
+    private IReadOnlyList<PermissionTreeNodeDto> FilteredRoots
+    {
+        get
+        {
+            var q = FilterText.Trim();
+            if (q.Length == 0)
+                return Roots;
+            return FilterNodes(Roots, q);
+        }
+    }
+
+    /// <summary>供父级工具栏「展开全部」调用。</summary>
+    public void ExpandAllRows()
+    {
+        _collapsed.Clear();
+        StateHasChanged();
+    }
+
+    /// <summary>供父级工具栏「折叠全部」调用。</summary>
+    public void CollapseAllRows()
+    {
+        _collapsed.Clear();
+        foreach (var id in CollectIdsWithChildren(FilteredRoots))
+            _collapsed.Add(id);
+        StateHasChanged();
+    }
+
+    private static IReadOnlyList<PermissionTreeNodeDto> FilterNodes(IReadOnlyList<PermissionTreeNodeDto> nodes, string q)
+    {
+        var list = new List<PermissionTreeNodeDto>();
+        foreach (var n in nodes)
+        {
+            var children = FilterNodes(n.Children, q);
+            var self = n.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                       || n.Code.Contains(q, StringComparison.OrdinalIgnoreCase);
+            if (!self && children.Count == 0)
+                continue;
+            list.Add(new PermissionTreeNodeDto(
+                n.Id, n.ParentId, n.Type, n.DisplayType, n.Code, n.Name, n.Resource, n.ComponentPath, n.SortOrder, n.IsEnabled,
+                n.Icon, n.IsExternalLink, n.IsVisible,
+                children.ToList()));
+        }
+
+        return list;
+    }
+
+    private IEnumerable<VisibleRow> EnumerateRows(IReadOnlyList<PermissionTreeNodeDto> nodes, int depth)
+    {
+        foreach (var n in nodes)
+        {
+            yield return new VisibleRow(n, depth);
+            if (n.Children is { Count: > 0 } && !_collapsed.Contains(n.Id))
+            {
+                foreach (var inner in EnumerateRows(n.Children, depth + 1))
+                    yield return inner;
+            }
+        }
+    }
+
+    private void ToggleCollapse(long id)
+    {
+        if (!_collapsed.Add(id))
+            _collapsed.Remove(id);
+    }
+
+    private static IEnumerable<long> CollectIdsWithChildren(IReadOnlyList<PermissionTreeNodeDto> nodes)
+    {
+        foreach (var n in nodes)
+        {
+            if (n.Children is { Count: > 0 })
+            {
+                yield return n.Id;
+                foreach (var c in CollectIdsWithChildren(n.Children))
+                    yield return c;
+            }
+        }
+    }
+
+    private static string BadgeClass(string displayType) =>
+        displayType switch
+        {
+            "目录" => "bg-primary",
+            "菜单" => "bg-info text-dark",
+            "按钮" => "bg-warning text-dark",
+            "接口" => "bg-secondary",
+            _ => "bg-light text-dark"
+        };
+
+    private sealed record VisibleRow(PermissionTreeNodeDto Node, int Depth);
+}

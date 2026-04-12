@@ -12,6 +12,14 @@ internal sealed class DataDictionaryItemConfiguration : IEntityTypeConfiguration
     }
 }
 
+internal sealed class DataDictionaryTypeConfiguration : IEntityTypeConfiguration<DataDictionaryType>
+{
+    public void Configure(EntityTypeBuilder<DataDictionaryType> builder)
+    {
+        builder.HasIndex(x => new { x.TenantId, x.OrgId, x.TypeCode }).IsUnique();
+    }
+}
+
 internal sealed class ProductCategoryConfiguration : IEntityTypeConfiguration<ProductCategory>
 {
     public void Configure(EntityTypeBuilder<ProductCategory> builder)

@@ -1,0 +1,69 @@
+@page "/account"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+
+<PageTitle>我的帐户</PageTitle>
+
+<h1>我的帐户</h1>
+<p class="text-muted">与 ASP.NET Core Identity 用户档案对应；修改密码请前往 <a href="/account/password">更改密码</a>。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_profile is null)
+{
+    <p class="text-muted">加载中…</p>
+}
+else
+{
+    <div class="card shadow-sm" style="max-width:32rem">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-4">用户名</dt>
+                <dd class="col-sm-8">@_profile.UserName</dd>
+                <dt class="col-sm-4">Email</dt>
+                <dd class="col-sm-8">@(_profile.Email ?? "—")</dd>
+                <dt class="col-sm-4">电话</dt>
+                <dd class="col-sm-8">@(_profile.PhoneNumber ?? "—")</dd>
+                <dt class="col-sm-4">租户 Id</dt>
+                <dd class="col-sm-8">@_profile.TenantId</dd>
+                <dt class="col-sm-4">组织 Id</dt>
+                <dd class="col-sm-8">@_profile.OrgId</dd>
+                <dt class="col-sm-4">状态</dt>
+                <dd class="col-sm-8">@(_profile.IsActive ? "正常" : "停用")</dd>
+                <dt class="col-sm-4">角色</dt>
+                <dd class="col-sm-8">@string.Join(", ", _profile.Roles)</dd>
+            </dl>
+            @if (_profile.CanProvisionTenants)
+            {
+                <p class="small text-muted mb-2">你可为新公司开通独立租户（权限与平台模板一致）。</p>
+                <a class="btn btn-outline-secondary btn-sm" href="/settings/tenants">租户管理</a>
+            }
+            <a class="btn btn-outline-primary btn-sm mt-3" href="/account/password">更改密码</a>
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private string? _error;
+    private AccountProfileDto? _profile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<AccountProfileDto>>("api/account/me");
+            if (env?.Success == true && env.Data is { } p)
+                _profile = p;
+            else
+                _error = env?.Message ?? "无法加载帐户信息。";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

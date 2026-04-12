@@ -1,0 +1,90 @@
+@* 
+  功能表格统一壳：列表工具栏 + Tabulator（含底部分页/计数，由 JS 渲染）+ 样式见 evolver-data-table.css。
+  结构约定：
+  1）列表工具栏：优先用 ToolbarStart / ToolbarEnd（自动套 EvolverListToolbar）；需完全自定义时用 Toolbar 覆盖。
+  2）表格与「状态栏」（分页、页码）由 Tabulator 一体渲染，不单独拆 Blazor 组件，避免与 evolverDataTable.js 重复实现。
+*@
+
+<div class="evolver-data-table-root">
+    <div class="card shadow-sm border-0 evolver-data-table-card">
+        @if (HasToolbar)
+        {
+            <div class="card-body py-2 border-bottom bg-body-tertiary flex-shrink-0 evolver-data-table-toolbar-panel">
+                @if (Toolbar is not null)
+                {
+                    @Toolbar
+                }
+                else
+                {
+                    <EvolverListToolbar>
+                        <Start>@ToolbarStart</Start>
+                        <End>@ToolbarEnd</End>
+                    </EvolverListToolbar>
+                }
+            </div>
+        }
+
+        @if (Loading)
+        {
+            <div class="card-body">
+                @if (LoadingContent is not null)
+                {
+                    @LoadingContent
+                }
+                else
+                {
+                    <p class="mb-0 text-muted">加载中…</p>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card-body pt-0 px-2 px-md-3 pb-1 evolver-data-table-table-wrap">
+                <div id="@TableHostId" class="@HostDivClass"></div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>与 JS 交互用的宿主元素 id，页面内须唯一。</summary>
+    [Parameter, EditorRequired]
+    public string TableHostId { get; set; } = default!;
+
+    /// <summary>完全自定义工具栏（与 ToolbarStart/ToolbarEnd 二选一；若设置则忽略 Start/End）。</summary>
+    [Parameter]
+    public RenderFragment? Toolbar { get; set; }
+
+    /// <summary>列表工具栏左侧：检索、筛选等（与 ToolbarEnd 组合时自动套用 EvolverListToolbar 布局）。</summary>
+    [Parameter]
+    public RenderFragment? ToolbarStart { get; set; }
+
+    /// <summary>列表工具栏右侧：新增、导出、刷新等。</summary>
+    [Parameter]
+    public RenderFragment? ToolbarEnd { get; set; }
+
+    /// <summary>为 true 时只显示加载区，不渲染表格宿主（避免无 id 时仍调 sync）。</summary>
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public RenderFragment? LoadingContent { get; set; }
+
+    /// <summary>追加到宿主 div 的 class（默认已含 Tabulator 主题与 evolver-data-table-host）。</summary>
+    [Parameter]
+    public string? AdditionalHostClass { get; set; }
+
+    private bool HasToolbar =>
+        Toolbar is not null || ToolbarStart is not null || ToolbarEnd is not null;
+
+    private string HostDivClass =>
+        string.Join(
+            " ",
+            new[]
+            {
+                "w-100",
+                "tabulator-bootstrap-overrides",
+                "evolver-data-table-host",
+                AdditionalHostClass
+            }.Where(static s => !string.IsNullOrWhiteSpace(s)));
+}

@@ -1,39 +1,524 @@
 @page "/settings/permissions"
-@inject HttpClient Http
+@using System.Globalization
+@using System.Text
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
-<PageTitle>权限管理</PageTitle>
+<PageTitle>菜单权限</PageTitle>
 
-<h1>权限管理</h1>
-<p class="text-muted">系统设置 · 权限树（只读展示）。维护权限需具备 <code>permissions.write</code>。</p>
+<h1 class="mb-2">菜单权限</h1>
+<p class="text-muted small mb-3">资源树与左侧导航一致；具备菜单权限的 <code>新增</code> 与 <code>修改</code>（<code>nav:system:permissions:create</code> / <code>…:update</code>）时可保存自定义权限。导出为当前树扁平列表；导入请使用本页导出的 CSV，且父节点行须排在子节点之前。</p>
+
+<AddMenuPermissionModal @bind-Show="_showAddModal" Roots="_roots" InitialParentId="_addModalParentId" EditSource="_modalEditNode" OnSaved="OnAddSavedAsync" />
 
 @if (_error is not null)
 {
     <div class="alert alert-danger">@_error</div>
 }
 
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
 @if (_loading)
 {
-    <p>加载中…</p>
+    <p class="text-muted">加载中…</p>
 }
 else
 {
-    <div class="card">
-        <div class="card-body">
-            <PermissionTreeView Nodes="_roots" />
+    @if (_pendingDelete is not null)
+    {
+        <div class="card border-danger shadow-sm mb-3">
+            <div class="card-header bg-danger text-white">确认删除</div>
+            <div class="card-body">
+                <p class="mb-3">确定删除权限 <strong>@_pendingDelete.Name</strong>（<code>@_pendingDelete.Code</code>，Id <strong>@_pendingDelete.Id</strong>）？须先删除子节点；删除后角色中该权限关联会被移除。</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync" disabled="@_busy">删除</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelDelete" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="evolver-data-table-root">
+        <div class="card shadow-sm border-0 evolver-data-table-card">
+            <div class="card-body py-2 border-bottom bg-body-tertiary flex-shrink-0 evolver-data-table-toolbar-panel">
+                <EvolverListToolbar>
+                    <Start>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <div class="position-relative flex-grow-1" style="min-width:12rem;max-width:22rem">
+                                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
+                                      aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                                    </svg>
+                                </span>
+                                <label class="visually-hidden" for="perm-tree-filter">菜单名称 / 权限标识</label>
+                                <input id="perm-tree-filter" type="search" class="form-control form-control-sm ps-5 ev-toolbar-search-input"
+                                       placeholder="菜单名称 / 权限标识" value="@_permFilter" @oninput="OnPermFilterInput" disabled="@_busy" autocomplete="off" />
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ToolbarExpandAllAsync" disabled="@_busy">展开全部</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ToolbarCollapseAllAsync" disabled="@_busy">折叠全部</button>
+                        </div>
+                    </Start>
+                    <End>
+                        <button type="button" class="btn btn-primary btn-sm px-3" @onclick="@(() => OpenAddModal(null))" disabled="@_busy">
+                            <i class="bi bi-plus-lg me-1"></i>新增
+                        </button>
+                        <div class="dropdown position-relative">
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                                    @onclick="() => _exportMenuOpen = !_exportMenuOpen"
+                                    disabled="@(_busy || _roots.Count == 0)">
+                                <i class="bi bi-download me-1"></i>导出
+                            </button>
+                            @if (_exportMenuOpen)
+                            {
+                                <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                                    <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                                    <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                                    <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                                </div>
+                            }
+                        </div>
+                        <label class="btn btn-outline-secondary btn-sm mb-0" title="导入本页导出的 CSV（父行须在子行之前）">
+                            <i class="bi bi-upload me-1"></i>导入
+                            <InputFile OnChange="ImportCsvAsync" accept=".csv" class="d-none" />
+                        </label>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadTreeAsync" disabled="@_busy">
+                            <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                        </button>
+                    </End>
+                </EvolverListToolbar>
+            </div>
+            <div class="card-body pt-3 px-2 px-md-3 pb-1">
+                <MenuPermissionResourceTable @ref="_permTable"
+                                             Roots="_roots"
+                                             FilterText="@_permFilter"
+                                             OnEdit="BeginEdit"
+                                             OnAddChild="OnAddChildFromTable"
+                                             OnDelete="BeginDelete" />
+            </div>
         </div>
     </div>
 }
 
 @code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly string[] ExportHeader =
+    [
+        "Code", "Name", "Type", "ParentId", "Resource", "ComponentPath", "SortOrder", "IsEnabled", "IsVisible", "IsExternalLink", "Icon"
+    ];
+
     private string? _error;
+    private string? _success;
     private bool _loading = true;
+    private bool _busy;
     private IReadOnlyList<PermissionTreeNodeDto> _roots = Array.Empty<PermissionTreeNodeDto>();
+    private bool _showAddModal;
+    private long? _addModalParentId;
+    private PermissionTreeNodeDto? _modalEditNode;
+    private PermissionTreeNodeDto? _pendingDelete;
+    private string _permFilter = "";
+    private MenuPermissionResourceTable? _permTable;
+    private bool _exportMenuOpen;
 
-    protected override async Task OnInitializedAsync() => await LoadTreeAsync();
+    protected override async Task OnInitializedAsync() => await LoadTreeAsync(true);
 
-    private async Task LoadTreeAsync()
+    private void OnPermFilterInput(ChangeEventArgs e)
     {
-        _loading = true;
+        _permFilter = e.Value?.ToString() ?? "";
+    }
+
+    private void ToolbarExpandAllAsync() => _permTable?.ExpandAllRows();
+
+    private void ToolbarCollapseAllAsync() => _permTable?.CollapseAllRows();
+
+    private async Task ReloadTreeAsync() => await LoadTreeAsync(false);
+
+    private async Task ExportAndCloseAsync(string format)
+    {
+        _exportMenuOpen = false;
+        if (_roots.Count == 0)
+            return;
+        _busy = true;
+        try
+        {
+            var stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            var aoa = BuildExportAoa();
+            if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var sb = new StringBuilder();
+                sb.Append('\uFEFF');
+                foreach (var row in aoa)
+                    sb.AppendLine(string.Join(",", row.Select(CsvEscape)));
+                await JS.InvokeVoidAsync("evolverDownloadTextFile", $"permissions_{stamp}.csv", sb.ToString(), "text/csv;charset=utf-8");
+            }
+            else if (string.Equals(format, "xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(aoa);
+                await JS.InvokeVoidAsync("evolverExportAoaToXlsx", json, $"permissions_{stamp}.xlsx", "Permissions");
+            }
+            else if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(aoa);
+                await JS.InvokeVoidAsync("evolverExportAoaToPdf", "菜单权限", json, $"permissions_{stamp}.pdf");
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private List<string[]> BuildExportAoa()
+    {
+        var aoa = new List<string[]> { ExportHeader };
+        foreach (var n in FlattenPreOrder(_roots))
+        {
+            aoa.Add(
+            [
+                n.Code,
+                n.Name,
+                n.Type,
+                n.ParentId?.ToString(CultureInfo.InvariantCulture) ?? "",
+                n.Resource ?? "",
+                n.ComponentPath ?? "",
+                n.SortOrder.ToString(CultureInfo.InvariantCulture),
+                n.IsEnabled ? "1" : "0",
+                n.IsVisible ? "1" : "0",
+                n.IsExternalLink ? "1" : "0",
+                n.Icon ?? ""
+            ]);
+        }
+
+        return aoa;
+    }
+
+    private static IEnumerable<PermissionTreeNodeDto> FlattenPreOrder(IEnumerable<PermissionTreeNodeDto> nodes)
+    {
+        foreach (var n in nodes)
+        {
+            yield return n;
+            foreach (var c in FlattenPreOrder(n.Children))
+                yield return c;
+        }
+    }
+
+    private static string CsvEscape(string? s)
+    {
+        if (string.IsNullOrEmpty(s))
+            return "";
+        var needs = s.Contains(',') || s.Contains('"') || s.Contains('\r') || s.Contains('\n');
+        var t = s.Replace("\"", "\"\"", StringComparison.Ordinal);
+        return needs ? $"\"{t}\"" : t;
+    }
+
+    private async Task ImportCsvAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy || e.FileCount == 0)
+            return;
+        _busy = true;
+        await WaitCursorInterop.SetAsync(JS, true);
+        _error = null;
+        _success = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(5_000_000);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            var text = await reader.ReadToEndAsync();
+            var rows = ParseCsvToRows(text);
+            if (rows.Count < 2)
+            {
+                _error = "CSV 至少需要表头与一行数据。";
+                return;
+            }
+
+            var header = rows[0];
+            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < header.Length; i++)
+            {
+                var key = header[i].Trim();
+                if (key.Length > 0)
+                    map[key] = i;
+            }
+
+            if (!map.ContainsKey("Code") || !map.ContainsKey("Name") || !map.ContainsKey("Type"))
+            {
+                _error = "CSV 须包含列：Code, Name, Type（及可选 ParentId, Resource, ComponentPath, SortOrder, IsEnabled, IsVisible, IsExternalLink, Icon）。";
+                return;
+            }
+
+            var ok = 0;
+            var fail = 0;
+            var errMsgs = new List<string>();
+            for (var r = 1; r < rows.Count; r++)
+            {
+                var row = rows[r];
+                if (row.Length == 0 || row.All(string.IsNullOrWhiteSpace))
+                    continue;
+                try
+                {
+                    var code = Cell(row, map, "Code");
+                    var name = Cell(row, map, "Name");
+                    var type = Cell(row, map, "Type");
+                    if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(type))
+                    {
+                        fail++;
+                        continue;
+                    }
+
+                    long? parentId = null;
+                    var pidText = Cell(row, map, "ParentId");
+                    if (!string.IsNullOrWhiteSpace(pidText) && long.TryParse(pidText, CultureInfo.InvariantCulture, out var pid))
+                        parentId = pid;
+
+                    int? sort = null;
+                    var soText = Cell(row, map, "SortOrder");
+                    if (!string.IsNullOrWhiteSpace(soText) && int.TryParse(soText, CultureInfo.InvariantCulture, out var so))
+                        sort = so;
+
+                    var resource = NullIfEmpty(Cell(row, map, "Resource"));
+                    var comp = NullIfEmpty(Cell(row, map, "ComponentPath"));
+                    var icon = NullIfEmpty(Cell(row, map, "Icon"));
+                    var enabled = ParseBool(Cell(row, map, "IsEnabled"), defaultValue: true);
+                    var visible = ParseBool(Cell(row, map, "IsVisible"), defaultValue: true);
+                    var ext = ParseBool(Cell(row, map, "IsExternalLink"), defaultValue: false);
+
+                    var dto = new UpsertPermissionDto(
+                        parentId,
+                        type.Trim(),
+                        code.Trim(),
+                        name.Trim(),
+                        resource,
+                        comp,
+                        sort,
+                        enabled,
+                        icon,
+                        ext,
+                        visible);
+                    var resp = await Http.PostAsJsonAsync("api/permissions", dto);
+                    var respText = await resp.Content.ReadAsStringAsync();
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        fail++;
+                        if (errMsgs.Count < 8)
+                            errMsgs.Add($"{code}: {TryParseEnvelopeMessage(respText) ?? respText}");
+                    }
+                    else
+                    {
+                        ok++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    fail++;
+                    if (errMsgs.Count < 8)
+                        errMsgs.Add(ex.Message);
+                }
+            }
+
+            _success = $"导入结束：成功 {ok}，失败 {fail}。";
+            if (errMsgs.Count > 0)
+                _success += " " + string.Join(" ", errMsgs);
+            await LoadTreeAsync(false);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            await WaitCursorInterop.SetAsync(JS, false);
+        }
+    }
+
+    private static string Cell(string[] row, IReadOnlyDictionary<string, int> map, string key) =>
+        map.TryGetValue(key, out var i) && i < row.Length ? row[i].Trim() : "";
+
+    private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private static bool ParseBool(string s, bool defaultValue)
+    {
+        if (string.IsNullOrWhiteSpace(s))
+            return defaultValue;
+        if (bool.TryParse(s, out var b))
+            return b;
+        if (s is "1" or "yes" or "Y" or "y")
+            return true;
+        if (s is "0" or "no" or "N" or "n")
+            return false;
+        return defaultValue;
+    }
+
+    private static List<string[]> ParseCsvToRows(string text)
+    {
+        var rows = new List<string[]>();
+        foreach (var rawLine in text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None))
+        {
+            if (string.IsNullOrWhiteSpace(rawLine))
+                continue;
+            rows.Add(ParseCsvLine(rawLine));
+        }
+
+        return rows;
+    }
+
+    private static string[] ParseCsvLine(string line)
+    {
+        var list = new List<string>();
+        var cur = new StringBuilder();
+        var inQuotes = false;
+        for (var i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            if (inQuotes)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        cur.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    cur.Append(c);
+                }
+            }
+            else
+            {
+                if (c == '"')
+                    inQuotes = true;
+                else if (c == ',')
+                {
+                    list.Add(cur.ToString());
+                    cur.Clear();
+                }
+                else
+                {
+                    cur.Append(c);
+                }
+            }
+        }
+
+        list.Add(cur.ToString());
+        return list.ToArray();
+    }
+
+    private void OpenAddModal(long? parentId)
+    {
+        _modalEditNode = null;
+        _addModalParentId = parentId;
+        _showAddModal = true;
+    }
+
+    private async Task OnAddSavedAsync()
+    {
+        _addModalParentId = null;
+        _modalEditNode = null;
+        _success = "菜单权限已保存。";
+        await LoadTreeAsync(false);
+    }
+
+    private void OnAddChildFromTable(PermissionTreeNodeDto node) => OpenAddModal(node.Id);
+
+    private void BeginEdit(PermissionTreeNodeDto node)
+    {
+        _pendingDelete = null;
+        _addModalParentId = null;
+        _modalEditNode = node;
+        _showAddModal = true;
+        _error = null;
+        _success = null;
+    }
+
+    private void BeginDelete(PermissionTreeNodeDto node)
+    {
+        _pendingDelete = node;
+        _error = null;
+        _success = null;
+    }
+
+    private void CancelDelete() => _pendingDelete = null;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_pendingDelete is null || _busy)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var id = _pendingDelete.Id;
+            var resp = await Http.DeleteAsync($"api/permissions/{id}");
+            var text = await resp.Content.ReadAsStringAsync();
+            if (resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                _error = "当前账号缺少菜单权限的「删除」按钮权限（nav:system:permissions:delete）。";
+                return;
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = TryParseEnvelopeMessage(text) ?? text;
+                return;
+            }
+
+            if (_modalEditNode?.Id == id)
+                _modalEditNode = null;
+            _pendingDelete = null;
+            _success = "已删除。";
+            await LoadTreeAsync(false);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string? TryParseEnvelopeMessage(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        try
+        {
+            var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<System.Text.Json.JsonElement>>(text, JsonOpts);
+            return env?.Message;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task LoadTreeAsync(bool showFullPageSpinner)
+    {
+        if (showFullPageSpinner)
+            _loading = true;
         _error = null;
         try
         {
@@ -49,7 +534,9 @@ else
         }
         finally
         {
-            _loading = false;
+            if (showFullPageSpinner)
+                _loading = false;
         }
     }
+
 }

@@ -1,0 +1,442 @@
+@namespace Evolver.Frontend.Components.Settings
+@using System.Globalization
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
+
+@if (Show)
+{
+    <div class="modal-backdrop fade show add-menu-perm-backdrop"></div>
+    <div class="modal fade show d-block add-menu-perm-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="addMenuPermTitle">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addMenuPermTitle">@(IsEdit ? "编辑菜单 / 权限" : "添加菜单")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAsync" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_error is not null)
+                    {
+                        <div class="alert alert-danger py-2 small">@_error</div>
+                    }
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">上级菜单</label>
+                            <select class="form-select @ParentInvalidClass" @bind="_parentIdStr">
+                                <option value="">主类目（顶级）</option>
+                                @foreach (var p in _parentOptions)
+                                {
+                                    <option value="@p.Id">@p.Label</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-block">类型</label>
+                            @if (IsEdit)
+                            {
+                                <select class="form-select" @bind="_dbType">
+                                    <option value="Directory">目录</option>
+                                    <option value="Menu">菜单</option>
+                                    <option value="UiButton">按钮</option>
+                                    <option value="Api">接口</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <div class="btn-group" role="group" aria-label="菜单类型">
+                                    <input type="radio" class="btn-check" name="navPermType" id="navTypeDir" value="Directory" checked="@(_navType == "Directory")" @onchange="OnNavTypeChange" />
+                                    <label class="btn btn-outline-primary" for="navTypeDir">目录</label>
+                                    <input type="radio" class="btn-check" name="navPermType" id="navTypeMenu" value="Menu" checked="@(_navType == "Menu")" @onchange="OnNavTypeChange" />
+                                    <label class="btn btn-outline-primary" for="navTypeMenu">菜单</label>
+                                    <input type="radio" class="btn-check" name="navPermType" id="navTypeBtn" value="Button" checked="@(_navType == "Button")" @onchange="OnNavTypeChange" />
+                                    <label class="btn btn-outline-primary" for="navTypeBtn">按钮</label>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">菜单图标</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="@IconPreviewClass" aria-hidden="true"></i></span>
+                                <input type="text" class="form-control" placeholder="如 bi-house-door（Bootstrap Icons）" @bind="_icon" />
+                            </div>
+                            <div class="form-text">填写图标类名，不含前缀时可自动加 <code>bi</code>。</div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">显示排序 <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control @SortInvalidClass" @bind="_sortOrderText" placeholder="0" />
+                            @if (_showSortError)
+                            {
+                                <div class="invalid-feedback d-block">菜单顺序不能为空</div>
+                            }
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">权限标识 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @CodeInvalidClass" @bind="_code" placeholder="nav:example:page" readonly="@IsEdit" title="@(IsEdit ? "编辑时不可修改权限标识。" : null)" />
+                            @if (_showCodeError)
+                            {
+                                <div class="invalid-feedback d-block">权限标识不能为空</div>
+                            }
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">菜单名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @NameInvalidClass" @bind="_name" placeholder="显示名称" />
+                            @if (_showNameError)
+                            {
+                                <div class="invalid-feedback d-block">菜单名称不能为空</div>
+                            }
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label d-block">是否外链 <span class="text-muted" title="新窗口打开外部地址">?</span></label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="ext" id="extY" checked="@_isExternalLink" @onchange="@(_ => _isExternalLink = true)" />
+                                <label class="form-check-label" for="extY">是</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="ext" id="extN" checked="@(!_isExternalLink)" @onchange="@(_ => _isExternalLink = false)" />
+                                <label class="form-check-label" for="extN">否</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">路由地址 @RouteRequiredStar</label>
+                            <input type="text" class="form-control @RouteInvalidClass" @bind="_route" placeholder="如 settings/users" />
+                            @if (_showRouteError)
+                            {
+                                <div class="invalid-feedback d-block">请输入路由地址</div>
+                            }
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">组件路径</label>
+                            <input type="text" class="form-control" @bind="_componentPath" placeholder="Pages/Settings/UserManagement.razor" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label d-block">显示状态 <span class="text-muted" title="是否在导航中显示">?</span></label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="vis" id="visY" checked="@_isVisible" @onchange="@(_ => _isVisible = true)" />
+                                <label class="form-check-label" for="visY">显示</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="vis" id="visN" checked="@(!_isVisible)" @onchange="@(_ => _isVisible = false)" />
+                                <label class="form-check-label" for="visN">隐藏</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label d-block">菜单状态 <span class="text-muted" title="停用后不参与授权校验通过">?</span></label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="en" id="enY" checked="@_isEnabled" @onchange="@(_ => _isEnabled = true)" />
+                                <label class="form-check-label" for="enY">正常</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="en" id="enN" checked="@(!_isEnabled)" @onchange="@(_ => _isEnabled = false)" />
+                                <label class="form-check-label" for="enN">停用</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SubmitAsync" disabled="@_busy">@(IsEdit ? "保存" : "确定")</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseAsync" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool Show { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ShowChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<PermissionTreeNodeDto> Roots { get; set; } = Array.Empty<PermissionTreeNodeDto>();
+
+    /// <summary>从树行「新增子级」打开时预填的上级菜单 Id；顶级新增传 null。</summary>
+    [Parameter]
+    public long? InitialParentId { get; set; }
+
+    /// <summary>非 null 时为编辑模式，与「添加菜单」共用同一表单。</summary>
+    [Parameter]
+    public PermissionTreeNodeDto? EditSource { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    private bool _prevShow;
+    private bool _busy;
+    private string? _error;
+    private string _parentIdStr = "";
+    private string _navType = "Directory";
+    /// <summary>编辑模式下与下拉框绑定，对应后端 PermissionType 字符串。</summary>
+    private string _dbType = "Directory";
+
+    private bool IsEdit => EditSource is not null;
+    private string _icon = "";
+    private string _sortOrderText = "0";
+    private string _code = "";
+    private string _name = "";
+    private bool _isExternalLink;
+    private string _route = "";
+    private string _componentPath = "";
+    private bool _isVisible = true;
+    private bool _isEnabled = true;
+
+    private bool _showNameError;
+    private bool _showSortError;
+    private bool _showCodeError;
+    private bool _showRouteError;
+
+    private readonly List<(long Id, string Label)> _parentOptions = new();
+
+    private bool IsMenuType =>
+        IsEdit
+            ? _dbType.Equals("Menu", StringComparison.OrdinalIgnoreCase)
+            : string.Equals(_navType, "Menu", StringComparison.Ordinal);
+
+    private string RouteRequiredStar => IsMenuType ? "*" : "";
+
+    private string IconPreviewClass
+    {
+        get
+        {
+            var t = _icon.Trim();
+            if (t.Length == 0)
+                return "bi bi-circle";
+            if (t.StartsWith("bi ", StringComparison.Ordinal) || t.StartsWith("bi-", StringComparison.OrdinalIgnoreCase))
+                return t.StartsWith("bi ", StringComparison.Ordinal) ? t : "bi " + t;
+            return "bi bi-" + t.TrimStart('-');
+        }
+    }
+
+    private string ParentInvalidClass => "";
+    private string SortInvalidClass => _showSortError ? "is-invalid" : "";
+    private string CodeInvalidClass => _showCodeError ? "is-invalid" : "";
+    private string NameInvalidClass => _showNameError ? "is-invalid" : "";
+    private string RouteInvalidClass => _showRouteError ? "is-invalid" : "";
+
+    protected override void OnParametersSet()
+    {
+        if (Show)
+            RebuildParentOptions();
+        if (Show && !_prevShow)
+        {
+            if (EditSource is { } seed)
+                ApplyEditSeed(seed);
+            else
+            {
+                ResetForm();
+                if (InitialParentId is { } pid)
+                    _parentIdStr = pid.ToString();
+            }
+        }
+        _prevShow = Show;
+    }
+
+    private void OnNavTypeChange(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(v))
+            _navType = v;
+    }
+
+    private void RebuildParentOptions()
+    {
+        _parentOptions.Clear();
+        Walk(Roots, 0);
+    }
+
+    private void Walk(IReadOnlyList<PermissionTreeNodeDto> nodes, int depth)
+    {
+        foreach (var n in nodes)
+        {
+            if (IsEdit && IsInEditForbiddenParentSubtree(n.Id))
+                continue;
+            var pad = depth == 0 ? "" : new string('　', depth);
+            _parentOptions.Add((n.Id, $"{pad}{n.Name}（{n.Code}）"));
+            if (n.Children is { Count: > 0 })
+                Walk(n.Children, depth + 1);
+        }
+    }
+
+    /// <summary>编辑时不可将父级设为自身或其子孙，避免成环。</summary>
+    private bool IsInEditForbiddenParentSubtree(long id)
+    {
+        if (EditSource is null)
+            return false;
+        if (EditSource.Id == id)
+            return true;
+        return NodeContainsId(EditSource, id);
+    }
+
+    private static bool NodeContainsId(PermissionTreeNodeDto root, long id)
+    {
+        foreach (var c in root.Children)
+        {
+            if (c.Id == id || NodeContainsId(c, id))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void ApplyEditSeed(PermissionTreeNodeDto n)
+    {
+        _error = null;
+        ClearValidation();
+        _parentIdStr = n.ParentId?.ToString() ?? "";
+        _dbType = NormalizeDbType(n.Type);
+        _navType = MapDbTypeToNavType(_dbType);
+        _icon = n.Icon ?? "";
+        _sortOrderText = n.SortOrder.ToString(CultureInfo.InvariantCulture);
+        _code = n.Code;
+        _name = n.Name;
+        _isExternalLink = n.IsExternalLink;
+        _route = n.Resource ?? "";
+        _componentPath = n.ComponentPath ?? "";
+        _isVisible = n.IsVisible;
+        _isEnabled = n.IsEnabled;
+    }
+
+    private static string NormalizeDbType(string type)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+            return "Directory";
+        var t = type.Trim();
+        return t.Equals("Button", StringComparison.OrdinalIgnoreCase) ? "UiButton" : t;
+    }
+
+    private static string MapDbTypeToNavType(string dbType) =>
+        dbType.Equals("UiButton", StringComparison.OrdinalIgnoreCase) ? "Button" : dbType;
+
+    private void ResetForm()
+    {
+        _error = null;
+        _parentIdStr = "";
+        _navType = "Directory";
+        _dbType = "Directory";
+        _icon = "";
+        _sortOrderText = "0";
+        _code = "";
+        _name = "";
+        _isExternalLink = false;
+        _route = "";
+        _componentPath = "";
+        _isVisible = true;
+        _isEnabled = true;
+        ClearValidation();
+    }
+
+    private void ClearValidation()
+    {
+        _showNameError = false;
+        _showSortError = false;
+        _showCodeError = false;
+        _showRouteError = false;
+    }
+
+    private bool Validate()
+    {
+        ClearValidation();
+        var ok = true;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _showNameError = true;
+            ok = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_sortOrderText) || !int.TryParse(_sortOrderText.Trim(), out _))
+        {
+            _showSortError = true;
+            ok = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_code))
+        {
+            _showCodeError = true;
+            ok = false;
+        }
+
+        if (IsMenuType && string.IsNullOrWhiteSpace(_route))
+        {
+            _showRouteError = true;
+            ok = false;
+        }
+
+        return ok;
+    }
+
+    private static string MapNavTypeToPermissionType(string navType) =>
+        navType switch
+        {
+            "Directory" => "Directory",
+            "Menu" => "Menu",
+            "Button" => "UiButton",
+            _ => "Directory",
+        };
+
+    private async Task SubmitAsync()
+    {
+        if (!Validate())
+            return;
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            long? parentId = null;
+            if (!string.IsNullOrWhiteSpace(_parentIdStr) && long.TryParse(_parentIdStr.Trim(), out var pid))
+                parentId = pid;
+
+            var sort = int.Parse(_sortOrderText.Trim());
+            var icon = string.IsNullOrWhiteSpace(_icon) ? null : _icon.Trim();
+            var route = string.IsNullOrWhiteSpace(_route) ? null : _route.Trim();
+            var comp = string.IsNullOrWhiteSpace(_componentPath) ? null : _componentPath.Trim();
+
+            var typeForApi = IsEdit ? NormalizeDbType(_dbType) : MapNavTypeToPermissionType(_navType);
+            var dto = new UpsertPermissionDto(
+                ParentId: parentId,
+                Type: typeForApi,
+                Code: _code.Trim(),
+                Name: _name.Trim(),
+                Resource: route,
+                ComponentPath: comp,
+                SortOrder: sort,
+                IsEnabled: _isEnabled,
+                Icon: icon,
+                IsExternalLink: _isExternalLink,
+                IsVisible: _isVisible);
+
+            var resp = await Http.PostAsJsonAsync("api/permissions", dto);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (resp.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                _error = "当前账号缺少菜单权限的「新增」与「修改」按钮权限。";
+                return;
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<object>>(text,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _error = env?.Message ?? text;
+                return;
+            }
+
+            await OnSaved.InvokeAsync();
+            await CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        await ShowChanged.InvokeAsync(false);
+    }
+}

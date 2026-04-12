@@ -33,76 +33,44 @@ public sealed partial class AppDbContext
     {
         var utc = DateTime.UtcNow;
         var uid = _tenant.UserId;
-        int? createBy = uid is null ? null : (uid.Value <= int.MaxValue ? (int)uid.Value : null);
-        int? updateBy = createBy;
+        int? auditUserId = uid is null ? null : (uid.Value <= int.MaxValue ? (int)uid.Value : null);
 
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
-            switch (entry.State)
+            if (entry.State is EntityState.Added or EntityState.Modified)
             {
-                case EntityState.Added:
-                    entry.Entity.CreateTime = utc;
-                    entry.Entity.CreateBy = createBy;
-                    entry.Entity.UpdateTime = null;
-                    entry.Entity.UpdateBy = null;
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.UpdateTime = utc;
-                    entry.Entity.UpdateBy = updateBy;
-                    break;
+                entry.Entity.UpdateTime = utc;
+                entry.Entity.UpdateBy = auditUserId;
             }
         }
 
         foreach (var entry in ChangeTracker.Entries<Tenant>())
         {
-            switch (entry.State)
+            if (entry.State is EntityState.Added or EntityState.Modified)
             {
-                case EntityState.Added:
-                    entry.Entity.CreateTime = utc;
-                    entry.Entity.CreateBy = createBy;
-                    entry.Entity.UpdateTime = null;
-                    entry.Entity.UpdateBy = null;
-                    if (entry.Entity.TenantId == 0)
-                        entry.Entity.TenantId = entry.Entity.Id;
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.UpdateTime = utc;
-                    entry.Entity.UpdateBy = updateBy;
-                    break;
+                entry.Entity.UpdateTime = utc;
+                entry.Entity.UpdateBy = auditUserId;
             }
+
+            if (entry.State == EntityState.Added && entry.Entity.TenantId == 0)
+                entry.Entity.TenantId = entry.Entity.Id;
         }
 
         foreach (var entry in ChangeTracker.Entries<AppUser>())
         {
-            switch (entry.State)
+            if (entry.State is EntityState.Added or EntityState.Modified)
             {
-                case EntityState.Added:
-                    entry.Entity.CreateTime = utc;
-                    entry.Entity.CreateBy = createBy;
-                    entry.Entity.UpdateTime = null;
-                    entry.Entity.UpdateBy = null;
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.UpdateTime = utc;
-                    entry.Entity.UpdateBy = updateBy;
-                    break;
+                entry.Entity.UpdateTime = utc;
+                entry.Entity.UpdateBy = auditUserId;
             }
         }
 
         foreach (var entry in ChangeTracker.Entries<AppRole>())
         {
-            switch (entry.State)
+            if (entry.State is EntityState.Added or EntityState.Modified)
             {
-                case EntityState.Added:
-                    entry.Entity.CreateTime = utc;
-                    entry.Entity.CreateBy = createBy;
-                    entry.Entity.UpdateTime = null;
-                    entry.Entity.UpdateBy = null;
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.UpdateTime = utc;
-                    entry.Entity.UpdateBy = updateBy;
-                    break;
+                entry.Entity.UpdateTime = utc;
+                entry.Entity.UpdateBy = auditUserId;
             }
         }
     }

@@ -1,5 +1,9 @@
 ﻿@implements IDisposable
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
 @inject NavigationManager Nav
+@inject HttpClient Http
+@inject AuthTokenStore Tokens
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -12,12 +16,9 @@
 
 <div class="@NavMenuCssClass nav-scrollable nav-menu-body">
     <nav class="flex-column">
-        <div class="nav-item px-3 py-2">
-            <small class="text-nav-muted">主导航</small>
-        </div>
         <div class="nav-item px-3">
             <NavLink class="nav-link nav-link-main" href="" Match="NavLinkMatch.All">
-                <i class="bi bi-house-door nav-menu-icon" aria-hidden="true"></i>
+                <i class="bi bi-speedometer2 nav-menu-icon" aria-hidden="true"></i>
                 <span>仪表盘</span>
                 <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
             </NavLink>
@@ -25,124 +26,158 @@
 
         <div class="nav-item px-3 pt-3 nav-settings-group">
             <button type="button"
-                    class="nav-link nav-link-main nav-settings-parent @SettingsParentClass()"
-                    @onclick="ToggleSettingsExpanded"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_settingsRouteActive)"
+                    @onclick="() => ToggleSettingsExpanded()"
                     aria-expanded="@_settingsExpanded">
                 <i class="bi bi-gear nav-menu-icon" aria-hidden="true"></i>
-                <span>系统设置</span>
+                <span>系统管理</span>
                 <i class="bi bi-chevron-right nav-menu-chevron @(_settingsExpanded ? "expanded" : "")" aria-hidden="true"></i>
             </button>
             @if (_settingsExpanded)
             {
                 <div class="nav-settings-flyout">
+                    @if (_canProvisionTenants)
+                    {
+                        <NavLink class="nav-link nav-sublink" href="settings/tenants">租户管理</NavLink>
+                    }
+                    <NavLink class="nav-link nav-sublink" href="settings/organizations">组织架构</NavLink>
                     <NavLink class="nav-link nav-sublink" href="settings/users">用户管理</NavLink>
                     <NavLink class="nav-link nav-sublink" href="settings/roles">角色管理</NavLink>
-                    <NavLink class="nav-link nav-sublink" href="settings/permissions">权限管理</NavLink>
-                    <NavLink class="nav-link nav-sublink" href="settings/organizations">组织架构</NavLink>
-                    <NavLink class="nav-link nav-sublink" href="settings/data-dictionary">数据字典</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/permissions">菜单权限</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/data-dictionary">字典管理</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/parameters">参数设置</NavLink>
                 </div>
             }
         </div>
 
-        <div class="nav-item px-3 pt-3">
-            <small class="text-nav-muted">业务模块</small>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="customers">
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_customerRouteActive)"
+                    @onclick="() => _customerExpanded = !_customerExpanded"
+                    aria-expanded="@_customerExpanded">
                 <i class="bi bi-people nav-menu-icon" aria-hidden="true"></i>
-                <span>客户与会员</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+                <span>客户管理</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_customerExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_customerExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="customers">客户信息</NavLink>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 pt-2">
-            <small class="text-nav-muted d-block mb-1">商品</small>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="products">
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_productRouteActive)"
+                    @onclick="() => _productExpanded = !_productExpanded"
+                    aria-expanded="@_productExpanded">
                 <i class="bi bi-box-seam nav-menu-icon" aria-hidden="true"></i>
-                <span>商品信息</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="product-master">
-                <i class="bi bi-diagram-3 nav-menu-icon" aria-hidden="true"></i>
-                <span>分类 / 库存 / BOM</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+                <span>商品管理</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_productExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_productExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="products">商品信息</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="product-master">物料清单</NavLink>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 pt-2">
-            <small class="text-nav-muted d-block mb-1">采购 / 生产</small>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="procurement">
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_procurementRouteActive)"
+                    @onclick="() => _procurementExpanded = !_procurementExpanded"
+                    aria-expanded="@_procurementExpanded">
                 <i class="bi bi-truck nav-menu-icon" aria-hidden="true"></i>
-                <span>供应商与采购</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+                <span>采购管理</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_procurementExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_procurementExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="procurement/suppliers">供应商信息</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="procurement/purchase-orders">采购单</NavLink>
+                </div>
+            }
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="production">
+
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_productionRouteActive)"
+                    @onclick="() => _productionExpanded = !_productionExpanded"
+                    aria-expanded="@_productionExpanded">
                 <i class="bi bi-tools nav-menu-icon" aria-hidden="true"></i>
-                <span>生产与领料</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+                <span>生产管理</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_productionExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_productionExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="production">生产单</NavLink>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 pt-2">
-            <small class="text-nav-muted d-block mb-1">订单</small>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="orders">
-                <i class="bi bi-receipt nav-menu-icon" aria-hidden="true"></i>
-                <span>销售订单</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="orders/kanban">
-                <i class="bi bi-columns-gap nav-menu-icon" aria-hidden="true"></i>
-                <span>销售看板</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_salesRouteActive)"
+                    @onclick="() => _salesExpanded = !_salesExpanded"
+                    aria-expanded="@_salesExpanded">
+                <i class="bi bi-cart3 nav-menu-icon" aria-hidden="true"></i>
+                <span>销售管理</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_salesExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_salesExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="sales/marketing">市场管理</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="sales/forecast">销售预测</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="orders">销售单</NavLink>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 pt-2">
-            <small class="text-nav-muted d-block mb-1">财务 / 报表</small>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="finance">
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_financeRouteActive)"
+                    @onclick="() => _financeExpanded = !_financeExpanded"
+                    aria-expanded="@_financeExpanded">
                 <i class="bi bi-cash-stack nav-menu-icon" aria-hidden="true"></i>
-                <span>财务与成本</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="reports">
-                <i class="bi bi-file-earmark-bar-graph nav-menu-icon" aria-hidden="true"></i>
-                <span>报表中心</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+                <span>财务管理</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_financeExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_financeExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="finance/receivables">应收账款</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="finance/payables">应付账款</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="finance/cost">成本管理</NavLink>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3 pt-2">
-            <small class="text-nav-muted d-block mb-1">数据与工具</small>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="import">
-                <i class="bi bi-upload nav-menu-icon" aria-hidden="true"></i>
-                <span>Excel 导入</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link nav-link-main" href="menu-intelligence">
-                <i class="bi bi-graph-up nav-menu-icon" aria-hidden="true"></i>
-                <span>菜单智能</span>
-                <span class="nav-menu-chevron-placeholder" aria-hidden="true"></span>
-            </NavLink>
+        <div class="nav-item px-3 pt-3 nav-settings-group">
+            <button type="button"
+                    class="nav-link nav-link-main nav-settings-parent @SubmenuParentActiveClass(_statsRouteActive)"
+                    @onclick="() => _statsExpanded = !_statsExpanded"
+                    aria-expanded="@_statsExpanded">
+                <i class="bi bi-bar-chart-line nav-menu-icon" aria-hidden="true"></i>
+                <span>统计分析</span>
+                <i class="bi bi-chevron-right nav-menu-chevron @(_statsExpanded ? "expanded" : "")" aria-hidden="true"></i>
+            </button>
+            @if (_statsExpanded)
+            {
+                <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="statistics/inventory">库存统计</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="statistics/procurement">采购统计</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="statistics/production">生产统计</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="statistics/sales">销售统计</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="statistics/cashflow">收支分析</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="statistics/operations">经营分析</NavLink>
+                </div>
+            }
         </div>
     </nav>
 </div>
@@ -150,38 +185,121 @@
 @code {
     private bool _collapseNavMenu;
     private bool _settingsExpanded = true;
+    private bool _customerExpanded;
+    private bool _productExpanded;
+    private bool _procurementExpanded;
+    private bool _productionExpanded;
+    private bool _salesExpanded;
+    private bool _financeExpanded;
+    private bool _statsExpanded;
+    private bool _canProvisionTenants;
+
+    private bool _settingsRouteActive;
+    private bool _customerRouteActive;
+    private bool _productRouteActive;
+    private bool _procurementRouteActive;
+    private bool _productionRouteActive;
+    private bool _salesRouteActive;
+    private bool _financeRouteActive;
+    private bool _statsRouteActive;
 
     private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
 
     private void ToggleNavMenu() => _collapseNavMenu = !_collapseNavMenu;
 
-    protected override void OnInitialized()
+    private static string SubmenuParentActiveClass(bool isActive) =>
+        isActive ? "nav-settings-parent-active" : "";
+
+    protected override async Task OnInitializedAsync()
     {
         Nav.LocationChanged += OnLocationChanged;
-        SyncSettingsExpanded();
+        Tokens.AuthenticationChanged += OnAuthChanged;
+        RefreshRouteState();
+        await LoadProvisionFlagAsync();
+    }
+
+    private async void OnAuthChanged()
+    {
+        try
+        {
+            await LoadProvisionFlagAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            /* ignore */
+        }
+    }
+
+    private async Task LoadProvisionFlagAsync()
+    {
+        if (string.IsNullOrEmpty(Tokens.AccessToken))
+        {
+            _canProvisionTenants = false;
+            return;
+        }
+
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<AccountProfileDto>>("api/account/me");
+            _canProvisionTenants = env?.Success == true && env.Data?.CanProvisionTenants == true;
+        }
+        catch
+        {
+            _canProvisionTenants = false;
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        SyncSettingsExpanded();
+        RefreshRouteState();
         _ = InvokeAsync(StateHasChanged);
     }
 
-    private void SyncSettingsExpanded()
+    private void RefreshRouteState()
     {
-        if (Nav.Uri.Contains("/settings", StringComparison.OrdinalIgnoreCase))
+        var u = Nav.Uri;
+
+        _settingsRouteActive = u.Contains("/settings", StringComparison.OrdinalIgnoreCase);
+        if (_settingsRouteActive)
             _settingsExpanded = true;
+
+        _customerRouteActive = u.Contains("/customers", StringComparison.OrdinalIgnoreCase);
+        if (_customerRouteActive)
+            _customerExpanded = true;
+
+        _productRouteActive = u.Contains("/products", StringComparison.OrdinalIgnoreCase)
+                              || u.Contains("/product-master", StringComparison.OrdinalIgnoreCase);
+        if (_productRouteActive)
+            _productExpanded = true;
+
+        _procurementRouteActive = u.Contains("/procurement", StringComparison.OrdinalIgnoreCase);
+        if (_procurementRouteActive)
+            _procurementExpanded = true;
+
+        _productionRouteActive = u.Contains("/production", StringComparison.OrdinalIgnoreCase);
+        if (_productionRouteActive)
+            _productionExpanded = true;
+
+        _salesRouteActive = u.Contains("/sales", StringComparison.OrdinalIgnoreCase)
+                            || u.Contains("/orders", StringComparison.OrdinalIgnoreCase);
+        if (_salesRouteActive)
+            _salesExpanded = true;
+
+        _financeRouteActive = u.Contains("/finance", StringComparison.OrdinalIgnoreCase);
+        if (_financeRouteActive)
+            _financeExpanded = true;
+
+        _statsRouteActive = u.Contains("/statistics", StringComparison.OrdinalIgnoreCase);
+        if (_statsRouteActive)
+            _statsExpanded = true;
     }
 
     private void ToggleSettingsExpanded() => _settingsExpanded = !_settingsExpanded;
 
-    private string SettingsParentClass()
+    public void Dispose()
     {
-        var u = Nav.Uri;
-        if (u.Contains("/settings", StringComparison.OrdinalIgnoreCase))
-            return "nav-settings-parent-active";
-        return "";
+        Nav.LocationChanged -= OnLocationChanged;
+        Tokens.AuthenticationChanged -= OnAuthChanged;
     }
-
-    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 }

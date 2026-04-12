@@ -55,8 +55,7 @@ public sealed class ProductsController(AppDbContext db, ITenantContext tenant) :
             Code = code,
             Name = name,
             UnitPrice = dto.UnitPrice,
-            UnitCost = dto.UnitCost,
-            IsDeleted = false
+            UnitCost = dto.UnitCost
         };
 
         db.Products.Add(entity);
@@ -109,7 +108,7 @@ public sealed class ProductsController(AppDbContext db, ITenantContext tenant) :
         if (entity is null)
             return NotFound();
 
-        entity.IsDeleted = true;
+        db.Products.Remove(entity);
         await db.SaveChangesAsync(ct);
         return NoContent();
     }

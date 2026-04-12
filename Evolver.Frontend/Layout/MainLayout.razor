@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @using Evolver.Frontend.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject AuthTokenStore Tokens
 @inject IJSRuntime Js
 @inject NavigationManager Nav
@@ -12,7 +13,13 @@
     <main>
         <div class="top-row px-4 d-flex justify-content-between align-items-center">
             <span class="text-muted small">Grill Shack / Evolver</span>
-            <div>
+            <div class="d-flex align-items-center gap-2">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="text-muted small">@context.User.Identity?.Name</span>
+                        <a class="btn btn-sm btn-outline-primary" href="/account">我的帐户</a>
+                    </Authorized>
+                </AuthorizeView>
                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="LogoutAsync">退出登录</button>
             </div>
         </div>

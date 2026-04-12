@@ -15,7 +15,7 @@ namespace Evolver.Web.Controllers;
 public sealed class OrganizationsController(AppDbContext db, ITenantContext tenant) : ControllerBase
 {
     [HttpGet("tree")]
-    [RequirePermission("organizations.read")]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Organizations.Query)]
     public async Task<ActionResult<IReadOnlyList<OrganizationTreeNodeDto>>> GetTree(CancellationToken ct)
     {
         var rows = await db.Organizations
@@ -46,7 +46,7 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
     }
 
     [HttpGet("{id:long}")]
-    [RequirePermission("organizations.read")]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Organizations.Query)]
     public async Task<ActionResult<OrganizationDto>> GetById(long id, CancellationToken ct)
     {
         var row = await db.Organizations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -56,7 +56,7 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
     }
 
     [HttpPost]
-    [RequirePermission("organizations.write")]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Organizations.Create)]
     public async Task<ActionResult<OrganizationDto>> Create([FromBody] CreateOrganizationDto dto, CancellationToken ct)
     {
         var name = dto.Name.Trim();
@@ -76,8 +76,7 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
             OrgId = tenant.OrgId,
             ParentId = dto.ParentId,
             Name = name,
-            OrgType = string.IsNullOrWhiteSpace(dto.OrgType) ? null : dto.OrgType.Trim(),
-            IsDeleted = false
+            OrgType = string.IsNullOrWhiteSpace(dto.OrgType) ? null : dto.OrgType.Trim()
         };
 
         db.Organizations.Add(entity);
@@ -87,7 +86,7 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
     }
 
     [HttpPut("{id:long}")]
-    [RequirePermission("organizations.write")]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Organizations.Update)]
     public async Task<ActionResult> Update(long id, [FromBody] UpdateOrganizationDto dto, CancellationToken ct)
     {
         var entity = await db.Organizations.FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -117,18 +116,18 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
     }
 
     [HttpDelete("{id:long}")]
-    [RequirePermission("organizations.write")]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Organizations.Delete)]
     public async Task<ActionResult> Delete(long id, CancellationToken ct)
     {
         var entity = await db.Organizations.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (entity is null)
             return NotFound();
 
-        var hasChildren = await db.Organizations.AnyAsync(x => x.ParentId == id && !x.IsDeleted, ct);
+        var hasChildren = await db.Organizations.AnyAsync(x => x.ParentId == id, ct);
         if (hasChildren)
             return Conflict("Remove or re-parent child organizations first.");
 
-        entity.IsDeleted = true;
+        db.Organizations.Remove(entity);
         await db.SaveChangesAsync(ct);
         return NoContent();
     }

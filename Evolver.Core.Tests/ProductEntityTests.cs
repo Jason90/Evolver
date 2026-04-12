@@ -18,7 +18,6 @@ public sealed class ProductEntityTests
 
         Assert.Equal(2, p.TenantId);
         Assert.Equal(3, p.OrgId);
-        Assert.False(p.IsDeleted);
         Assert.Null(p.UpdateTime);
     }
 }

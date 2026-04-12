@@ -11,6 +11,10 @@ public sealed class DataDictionaryItem : BaseEntity
     public string ItemCode { get; set; } = "";
     public string DisplayName { get; set; } = "";
     public string? ItemValue { get; set; }
+
+    /// <summary>备注（若依字典数据中的「备注」）。</summary>
+    public string? Remark { get; set; }
+
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 }

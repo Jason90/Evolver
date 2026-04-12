@@ -1,0 +1,25 @@
+@*
+  列表工具栏：左 Start + 右 End。通常由 EvolverDataTable 的 ToolbarStart / ToolbarEnd 自动套用，无需页面再包一层。
+  若需完全自定义工具栏布局，可在 EvolverDataTable 上使用 Toolbar 整段覆盖。
+*@
+
+<div class="row g-2 align-items-center evolver-list-toolbar">
+    <div class="col-12 col-md-6 col-lg-5 evolver-list-toolbar__start">
+        @Start
+    </div>
+    <div class="col-12 col-md-6 col-lg-7 evolver-list-toolbar__end">
+        <div class="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
+            @End
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>左侧：检索、筛选、视图切换等。</summary>
+    [Parameter]
+    public RenderFragment? Start { get; set; }
+
+    /// <summary>右侧：新增、导出、刷新等主操作。</summary>
+    [Parameter]
+    public RenderFragment? End { get; set; }
+}

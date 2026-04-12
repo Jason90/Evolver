@@ -7,7 +7,7 @@ namespace Evolver.Web.Extensions;
 public static class EvolverWebApplicationExtensions
 {
     /// <summary>
-    /// 典型顺序：全局异常 → Serilog 请求日志 → Swagger/CORS（开发）→ HTTPS → 多租户 → 认证 → 授权 → 端点。
+    /// 典型顺序：全局异常 → Serilog → Swagger/CORS（开发）→ HTTPS → 认证 → 多租户上下文（依赖已认证用户的 Claims）→ 授权 → 端点。
     /// </summary>
     public static WebApplication UseEvolverApiPipeline(this WebApplication app)
     {
@@ -22,8 +22,8 @@ public static class EvolverWebApplicationExtensions
         }
 
         app.UseHttpsRedirection();
-        app.UseMiddleware<TenantContextMiddleware>();
         app.UseAuthentication();
+        app.UseMiddleware<TenantContextMiddleware>();
         app.UseAuthorization();
         app.MapControllers();
         return app;

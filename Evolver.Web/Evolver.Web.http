@@ -14,14 +14,14 @@ GET {{host}}/api/products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 Accept: application/json
 
-### 3) 系统设置 — 组织树（需 permissions: organizations.read 或 Admin）
+### 3) 系统管理 — 组织树（需 nav:system:organizations:query 或 Admin）
 GET {{host}}/api/organizations/tree
 Authorization: Bearer YOUR_ACCESS_TOKEN
 
-### 4) 系统设置 — 用户列表（users.read）
+### 4) 系统管理 — 用户列表（需 nav:system:users:query 或 Admin）
 GET {{host}}/api/users
 Authorization: Bearer YOUR_ACCESS_TOKEN
 
-### 5) 系统设置 — 数据字典（dictionary.read）
+### 5) 系统管理 — 数据字典（需 nav:system:dictionary:query 或 Admin）
 GET {{host}}/api/data-dictionary/items
 Authorization: Bearer YOUR_ACCESS_TOKEN

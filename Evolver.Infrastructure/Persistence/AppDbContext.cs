@@ -18,6 +18,7 @@ public sealed partial class AppDbContext : IdentityDbContext<AppUser, AppRole, l
     public DbSet<UserOrganization> UserOrganizations => Set<UserOrganization>();
 
     public DbSet<DataDictionaryItem> DataDictionaryItems => Set<DataDictionaryItem>();
+    public DbSet<DataDictionaryType> DataDictionaryTypes => Set<DataDictionaryType>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
 
@@ -63,7 +64,9 @@ public sealed partial class AppDbContext : IdentityDbContext<AppUser, AppRole, l
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        ApplyTenantOrgSoftDeleteFilters(modelBuilder);
+        modelBuilder.ApplyMultiTenantIdentityIndexes();
+
+        ApplyTenantOrgFilters(modelBuilder);
         ApplyTenantRowQueryFilter(modelBuilder);
     }
 }

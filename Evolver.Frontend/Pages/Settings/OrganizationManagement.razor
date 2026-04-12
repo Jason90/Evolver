@@ -1,65 +1,364 @@
 @page "/settings/organizations"
+@attribute [Authorize]
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using Microsoft.AspNetCore.Authorization
+@implements IAsyncDisposable
 @inject HttpClient Http
+@inject IJSRuntime JS
 
 <PageTitle>组织架构</PageTitle>
 
-<h1>组织架构</h1>
-<p class="text-muted">系统设置 · 组织树与新增节点。</p>
+<h1 class="mb-2">组织架构</h1>
+<p class="text-muted mb-3">系统管理 · 组织树维护（Tabulator 树表：展开/折叠、检索、编辑、新增子级与删除）。</p>
 
 @if (_error is not null)
 {
-    <div class="alert alert-danger">@_error</div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
 }
 
-<div class="card mb-3">
-    <div class="card-header">新增组织节点</div>
-    <div class="card-body row g-2">
-        <div class="col-md-4">
-            <label class="form-label">名称</label>
-            <input class="form-control" @bind="_orgName" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">类型（可选）</label>
-            <input class="form-control" @bind="_orgType" placeholder="Headquarters / Team" />
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">父级 Id（空=根）</label>
-            <input class="form-control" @bind="_orgParentIdStr" />
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-primary w-100" @onclick="CreateOrgAsync" disabled="@_busy">保存</button>
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+@if (_pane == OrgPane.List)
+{
+    <EvolverDataTable TableHostId="@OrgTableHostId" Loading="@(_orgTree is null)">
+        <ToolbarStart>
+            <div class="position-relative">
+                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
+                      aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                    </svg>
+                </span>
+                <label class="visually-hidden" for="org-global-filter">全文检索</label>
+                <input id="org-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索（名称、类型、Id）"
+                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            </div>
+        </ToolbarStart>
+        <ToolbarEnd>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ExpandAllAsync" disabled="@(_busy || _orgTree is null)">
+                <i class="bi bi-arrows-expand me-1"></i>展开全部
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CollapseAllAsync" disabled="@(_busy || _orgTree is null)">
+                <i class="bi bi-arrows-collapse me-1"></i>折叠全部
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+        </ToolbarEnd>
+    </EvolverDataTable>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-header">新增组织节点</div>
+        <div class="card-body row g-2">
+            <div class="col-md-4">
+                <label class="form-label">名称 <span class="text-danger">*</span></label>
+                <input @ref="_createNameInput" class="form-control" @bind="_orgName" @bind:event="oninput" disabled="@_busy" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">类型（可选）</label>
+                <input class="form-control" @bind="_orgType" @bind:event="oninput" disabled="@_busy" placeholder="Headquarters / Team" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">父级 Id（空=根）</label>
+                <input class="form-control" @bind="_orgParentIdStr" @bind:event="oninput" disabled="@_busy" placeholder="从「新增子级」可自动填入" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-primary w-100" @onclick="CreateOrgAsync" disabled="@_busy">保存</button>
+            </div>
         </div>
     </div>
-</div>
+}
+else if (_pane == OrgPane.Edit && _editId is not null)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回组织树</button>
+    </div>
 
-@if (_orgTree is null)
-{
-    <p>加载中…</p>
+    @if (_editLoading)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                <p class="mt-3 mb-0 text-muted">正在加载…</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm" style="max-width:36rem">
+            <div class="card-header">编辑组织 — Id @_editId</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">名称 <span class="text-danger">*</span></label>
+                    <input class="form-control @(string.IsNullOrEmpty(_editNameError) ? "" : "is-invalid")"
+                           @bind="_editName" @bind:event="oninput" disabled="@_busy" />
+                    @if (_editNameError is { } ne)
+                    {
+                        <div class="invalid-feedback d-block">@ne</div>
+                    }
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">父级 Id（空=根）</label>
+                    <input class="form-control" @bind="_editParentIdStr" @bind:event="oninput" disabled="@_busy" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">类型（可选）</label>
+                    <input class="form-control" @bind="_editOrgType" @bind:event="oninput" disabled="@_busy" />
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@_busy">保存</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    }
 }
-else if (_orgTree.Count == 0)
+else if (_pane == OrgPane.DeleteConfirm && _deleteId is not null)
 {
-    <p class="text-muted">暂无组织数据。</p>
-}
-else
-{
-    <ul class="list-unstyled">
-        @foreach (var (node, depth) in FlattenOrgTree(_orgTree))
-        {
-            <li class="mb-1" style="padding-left: @(depth * 1.25)rem">• @node.Name <small class="text-muted">(@(node.OrgType ?? "-")) Id=@node.Id</small></li>
-        }
-    </ul>
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回组织树</button>
+    </div>
+
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">确认删除</div>
+        <div class="card-body">
+            <p class="mb-3">确定删除组织 <strong>@_deleteLabel</strong>（Id <strong>@_deleteId</strong>）？须先删除或移动子组织。</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
+    private enum OrgPane { List, Edit, DeleteConfirm }
+
+    private const string OrgTableHostId = "evolver-org-tree-host";
+
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions OrgTreeJsonOpts = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = null
+    };
+
     private string? _error;
+    private string? _success;
     private bool _busy;
+    private OrgPane _pane = OrgPane.List;
 
     private List<OrganizationTreeNodeDto>? _orgTree;
+
     private string _orgName = "";
     private string? _orgType;
     private string? _orgParentIdStr;
 
-    protected override async Task OnInitializedAsync() => await LoadOrgAsync();
+    private long? _editId;
+    private bool _editLoading;
+    private string _editName = "";
+    private string? _editParentIdStr;
+    private string? _editOrgType;
+    private string? _editNameError;
+
+    private long? _deleteId;
+    private string _deleteLabel = "";
+
+    private string _globalFilter = "";
+    private int _dataTick;
+    private int _tabulatorSyncedTick = -1;
+    private DotNetObjectReference<OrganizationManagement>? _dotNetRef;
+
+    private ElementReference _createNameInput;
+
+    protected override async Task OnInitializedAsync() => await ReloadAllAsync();
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null;
+        _success = null;
+        _globalFilter = "";
+
+        if (_pane == OrgPane.List && _tabulatorSyncedTick >= 0)
+        {
+            await DestroyTabulatorAsync();
+            _tabulatorSyncedTick = -1;
+        }
+
+        await LoadOrgAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CancelToListAsync()
+    {
+        _pane = OrgPane.List;
+        _editId = null;
+        _editLoading = false;
+        _deleteId = null;
+        _deleteLabel = "";
+        await LoadOrgAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pane != OrgPane.List)
+        {
+            if (_tabulatorSyncedTick >= 0)
+            {
+                await DestroyTabulatorAsync();
+                _tabulatorSyncedTick = -1;
+            }
+            return;
+        }
+
+        if (_orgTree is null)
+            return;
+
+        if (_dataTick == _tabulatorSyncedTick)
+            return;
+
+        await SyncOrgTreeToDomAsync();
+    }
+
+    private static Dictionary<string, object?> ToTabulatorOrgNode(OrganizationTreeNodeDto n)
+    {
+        var d = new Dictionary<string, object?>
+        {
+            ["id"] = n.Id,
+            ["parentId"] = n.ParentId,
+            ["name"] = n.Name,
+            ["orgType"] = n.OrgType ?? ""
+        };
+        if (n.Children.Count > 0)
+            d["_children"] = n.Children.Select(ToTabulatorOrgNode).ToList();
+        return d;
+    }
+
+    private async Task SyncOrgTreeToDomAsync()
+    {
+        if (_orgTree is null)
+            return;
+        try
+        {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            var rows = _orgTree.Select(ToTabulatorOrgNode).ToList();
+            var json = JsonSerializer.Serialize(rows, OrgTreeJsonOpts);
+            await EvolverDataTableInterop.SyncAsync(JS, OrgTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Organizations, null);
+            _tabulatorSyncedTick = _dataTick;
+            await ApplyGlobalFilterJsAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task DestroyTabulatorAsync()
+    {
+        try
+        {
+            await EvolverDataTableInterop.DestroyAsync(JS, OrgTableHostId);
+        }
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task OnGlobalFilterInput(ChangeEventArgs e)
+    {
+        _globalFilter = e.Value?.ToString() ?? "";
+        await ApplyGlobalFilterJsAsync();
+    }
+
+    private async Task ApplyGlobalFilterJsAsync()
+    {
+        try
+        {
+            await EvolverDataTableInterop.SetGlobalFilterAsync(JS, OrgTableHostId, _globalFilter);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task ExpandAllAsync()
+    {
+        if (_busy || _orgTree is null)
+            return;
+        _busy = true;
+        try
+        {
+            await EvolverDataTableInterop.ExpandTreeAllAsync(JS, OrgTableHostId);
+        }
+        finally
+        {
+            _busy = false;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CollapseAllAsync()
+    {
+        if (_busy || _orgTree is null)
+            return;
+        _busy = true;
+        try
+        {
+            await EvolverDataTableInterop.CollapseTreeAllAsync(JS, OrgTableHostId);
+        }
+        finally
+        {
+            _busy = false;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnOrgTableEdit(long id)
+    {
+        await OpenEditAsync(id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnOrgTableAddChild(long id, string name)
+    {
+        _orgParentIdStr = id.ToString();
+        _error = null;
+        _success = null;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await _createNameInput.FocusAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // 首次渲染可能尚未就绪
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnOrgTableDelete(long id, string name)
+    {
+        _deleteId = id;
+        _deleteLabel = string.IsNullOrWhiteSpace(name) ? $"Id {id}" : name;
+        _pane = OrgPane.DeleteConfirm;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DestroyTabulatorAsync();
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
 
     private async Task LoadOrgAsync()
     {
@@ -75,31 +374,46 @@ else
             _error = ex.Message;
             _orgTree = new();
         }
+        finally
+        {
+            _dataTick++;
+        }
     }
 
     private async Task CreateOrgAsync()
     {
-        if (_busy) return;
+        if (_busy)
+            return;
+        var name = _orgName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            _error = "请输入组织名称。";
+            return;
+        }
+
         _busy = true;
         _error = null;
+        _success = null;
         try
         {
             long? pid = null;
             if (!string.IsNullOrWhiteSpace(_orgParentIdStr) && long.TryParse(_orgParentIdStr, out var p))
                 pid = p;
 
-            var body = new CreateOrganizationDto(_orgName.Trim(), pid, string.IsNullOrWhiteSpace(_orgType) ? null : _orgType.Trim());
+            var body = new CreateOrganizationDto(name, pid, string.IsNullOrWhiteSpace(_orgType) ? null : _orgType.Trim());
             var resp = await Http.PostAsJsonAsync("api/organizations", body);
+            var text = await resp.Content.ReadAsStringAsync();
             if (!resp.IsSuccessStatusCode)
             {
-                _error = await resp.Content.ReadAsStringAsync();
+                _error = ReadErrorText(text);
                 return;
             }
 
+            _success = "组织已创建。";
             _orgName = "";
             _orgType = null;
             _orgParentIdStr = null;
-            await LoadOrgAsync();
+            await ReloadForListAsync();
         }
         catch (Exception ex)
         {
@@ -111,22 +425,155 @@ else
         }
     }
 
-    private static IEnumerable<(OrganizationTreeNodeDto node, int depth)> FlattenOrgTree(IEnumerable<OrganizationTreeNodeDto> roots)
+    private async Task ReloadForListAsync()
     {
-        foreach (var r in roots)
-        {
-            foreach (var x in Walk(r, 0))
-                yield return x;
-        }
+        await DestroyTabulatorAsync();
+        _tabulatorSyncedTick = -1;
+        await LoadOrgAsync();
+        await InvokeAsync(StateHasChanged);
+        if (_pane == OrgPane.List && _orgTree is not null)
+            await SyncOrgTreeToDomAsync();
     }
 
-    private static IEnumerable<(OrganizationTreeNodeDto node, int depth)> Walk(OrganizationTreeNodeDto n, int depth)
+    private async Task OpenEditAsync(long id)
     {
-        yield return (n, depth);
-        foreach (var c in n.Children)
+        _pane = OrgPane.Edit;
+        _editId = id;
+        _editLoading = true;
+        _editNameError = null;
+        _editName = "";
+        _editParentIdStr = null;
+        _editOrgType = null;
+        await InvokeAsync(StateHasChanged);
+
+        _busy = true;
+        try
         {
-            foreach (var x in Walk(c, depth + 1))
-                yield return x;
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<OrganizationDto>>($"api/organizations/{id}");
+            if (env?.Success != true || env.Data is null)
+            {
+                _error = env?.Message ?? "无法加载组织。";
+                await CancelToListAsync();
+                return;
+            }
+
+            _editName = env.Data.Name;
+            _editParentIdStr = env.Data.ParentId?.ToString();
+            _editOrgType = env.Data.OrgType;
         }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await CancelToListAsync();
+        }
+        finally
+        {
+            _editLoading = false;
+            _busy = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_busy || _editId is not { } id)
+            return;
+        _editNameError = string.IsNullOrWhiteSpace(_editName) ? "请输入名称。" : null;
+        if (_editNameError is not null)
+            return;
+
+        long? parentId = null;
+        if (!string.IsNullOrWhiteSpace(_editParentIdStr))
+        {
+            if (!long.TryParse(_editParentIdStr, out var p))
+            {
+                _editNameError = "父级 Id 格式无效。";
+                return;
+            }
+            parentId = p;
+        }
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var dto = new UpdateOrganizationDto(
+                _editName.Trim(),
+                parentId,
+                string.IsNullOrWhiteSpace(_editOrgType) ? null : _editOrgType.Trim());
+            var resp = await Http.PutAsJsonAsync($"api/organizations/{id}", dto);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = "已保存。";
+            await CancelToListAsync();
+            await ReloadForListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy || _deleteId is not { } id)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/organizations/{id}");
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = "已删除。";
+            await CancelToListAsync();
+            await ReloadForListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string ReadErrorText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "请求失败。";
+        try
+        {
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<JsonElement>>(text, JsonOpts);
+            if (!string.IsNullOrEmpty(env?.Message))
+                return env.Message!;
+        }
+        catch
+        {
+        }
+
+        return text.Length > 400 ? text[..400] + "…" : text;
     }
 }

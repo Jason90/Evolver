@@ -6,6 +6,10 @@ using Evolver.Core.Repositories;
 using Evolver.Infrastructure.Persistence;
 using Evolver.Infrastructure.Persistence.Repositories;
 using Evolver.Web.Extensions;
+using Evolver.Web.Options;
+using Evolver.Web.Seeding;
+using Evolver.Web.Services;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -37,6 +41,8 @@ builder.Host.UseSerilog((ctx, cfg) =>
     }
 });
 
+builder.Services.Configure<FormOptions>(o => { o.MultipartBodyLengthLimit = 20 * 1024 * 1024; });
+builder.Services.Configure<PlatformOptions>(builder.Configuration.GetSection(PlatformOptions.SectionName));
 builder.Services.AddEvolverControllersWithUnifiedApi();
 builder.Services.AddEvolverSwagger();
 builder.Services.AddEvolverDevCors();
@@ -67,6 +73,10 @@ builder.Services.AddEvolverIdentity();
 
 builder.Services.AddScoped<ExcelImportService>();
 builder.Services.AddScoped<MenuIntelligenceService>();
+builder.Services.AddScoped<UserSpreadsheetService>();
+builder.Services.AddScoped<RoleSpreadsheetService>();
+builder.Services.AddScoped<TenantProvisioningService>();
+builder.Services.AddScoped<TenantSpreadsheetService>();
 
 var app = builder.Build();
 
@@ -80,16 +90,30 @@ using (var scope = app.Services.CreateScope())
     var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
     var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
 
+    async Task EnsurePlatformTenantRowAsync()
+    {
+        if (await db.Tenants.IgnoreQueryFilters().AnyAsync(t => t.Id == 1))
+            return;
+
+        db.Tenants.Add(new Tenant { Id = 1, TenantId = 1, OrgId = 0, Name = "Default" });
+        await db.SaveChangesAsync();
+    }
+
+    await EnsurePlatformTenantRowAsync();
+
     async Task SeedAdminAsync()
     {
         const string adminUser = "admin";
         const string adminRole = "Admin";
         var adminPassword = builder.Configuration["Admin:Password"] ?? "admin123";
 
-        if (!await roleMgr.RoleExistsAsync(adminRole))
-            await roleMgr.CreateAsync(new AppRole { Name = adminRole });
+        if (!await roleMgr.Roles.AnyAsync(r => r.Name == adminRole && r.TenantId == 1))
+            await roleMgr.CreateAsync(new AppRole { Name = adminRole, TenantId = 1, OrgId = 1 });
 
-        var existing = await userMgr.FindByNameAsync(adminUser);
+        var normalized = userMgr.NormalizeName(adminUser);
+        var existing = normalized is null
+            ? null
+            : await userMgr.Users.FirstOrDefaultAsync(u => u.TenantId == 1 && u.NormalizedUserName == normalized);
         if (existing is not null)
             return;
 
@@ -99,44 +123,22 @@ using (var scope = app.Services.CreateScope())
             Email = "admin@local",
             EmailConfirmed = true,
             TenantId = 1,
-            OrgId = 1
+            OrgId = 1,
+            IsActive = true
         };
         var res = await userMgr.CreateAsync(u, adminPassword);
-        if (res.Succeeded)
-            await userMgr.AddToRoleAsync(u, adminRole);
+        if (!res.Succeeded)
+            return;
+
+        var role = await roleMgr.Roles.FirstAsync(r => r.TenantId == 1 && r.Name == adminRole);
+        db.UserRoles.Add(new IdentityUserRole<long> { UserId = u.Id, RoleId = role.Id });
+        await db.SaveChangesAsync();
     }
 
     await SeedAdminAsync();
 
-    async Task EnsurePermissionAsync(string code, string name, PermissionType type, string? resource = null, long? parentId = null)
-    {
-        if (await db.Permissions.AnyAsync(p => p.Code == code))
-            return;
-
-        db.Permissions.Add(new Permission
-        {
-            TenantId = 1,
-            OrgId = 1,
-            Code = code,
-            Name = name,
-            Type = type,
-            Resource = resource,
-            ParentId = parentId
-        });
-        await db.SaveChangesAsync();
-    }
-
-    await EnsurePermissionAsync("permissions.read", "Permissions.Read", PermissionType.Api, "GET /api/permissions/tree");
-    await EnsurePermissionAsync("permissions.write", "Permissions.Write", PermissionType.Api, "POST /api/permissions");
-    await EnsurePermissionAsync("roles.read", "Roles.Read", PermissionType.Api, "GET /api/roles");
-    await EnsurePermissionAsync("roles.write", "Roles.Write", PermissionType.Api, "POST /api/roles; POST /api/roles/{id}/permissions");
-
-    await EnsurePermissionAsync("users.read", "Users.Read", PermissionType.Api, "GET /api/users");
-    await EnsurePermissionAsync("users.write", "Users.Write", PermissionType.Api, "POST/PUT/DELETE /api/users");
-    await EnsurePermissionAsync("organizations.read", "Organizations.Read", PermissionType.Api, "GET /api/organizations");
-    await EnsurePermissionAsync("organizations.write", "Organizations.Write", PermissionType.Api, "POST/PUT/DELETE /api/organizations");
-    await EnsurePermissionAsync("dictionary.read", "Dictionary.Read", PermissionType.Api, "GET /api/data-dictionary");
-    await EnsurePermissionAsync("dictionary.write", "Dictionary.Write", PermissionType.Api, "POST/DELETE /api/data-dictionary");
+    await NavigationMenuPermissionSeeder.EnsureCatalogAsync(db, tenantId: 1, orgId: 1);
+    await LegacySystemApiToNavPermissionMigration.MigrateAsync(db);
 
     if (!await db.Organizations.AnyAsync())
     {
@@ -146,15 +148,13 @@ using (var scope = app.Services.CreateScope())
             OrgId = 1,
             ParentId = null,
             Name = "总部",
-            OrgType = "Headquarters",
-            IsDeleted = false
+            OrgType = "Headquarters"
         });
         await db.SaveChangesAsync();
     }
 
     if (!await db.Products.AnyAsync())
     {
-        var now = DateTime.UtcNow;
         db.Products.AddRange(
             new Product
             {
@@ -163,9 +163,7 @@ using (var scope = app.Services.CreateScope())
                 Code = "SKU-001",
                 Name = "示例商品 A",
                 UnitPrice = 29.99m,
-                UnitCost = 12.50m,
-                CreateTime = now,
-                IsDeleted = false
+                UnitCost = 12.50m
             },
             new Product
             {
@@ -174,9 +172,7 @@ using (var scope = app.Services.CreateScope())
                 Code = "SKU-002",
                 Name = "示例商品 B",
                 UnitPrice = 15.00m,
-                UnitCost = null,
-                CreateTime = now,
-                IsDeleted = false
+                UnitCost = null
             });
         await db.SaveChangesAsync();
     }

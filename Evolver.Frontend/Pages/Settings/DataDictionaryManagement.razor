@@ -1,115 +1,464 @@
 @page "/settings/data-dictionary"
+@attribute [Authorize]
+@using System.Globalization
+@using System.Linq
+@using System.Text
+@using Microsoft.AspNetCore.Authorization
 @inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
 
-<PageTitle>数据字典</PageTitle>
+<PageTitle>字典管理</PageTitle>
 
-<h1>数据字典</h1>
-<p class="text-muted">系统设置 · 字典项维护。</p>
+<h1 class="mb-2">字典管理</h1>
+<p class="text-muted mb-3">维护字典类型（分类编码）及各类下的字典数据项；类型与业务中的 CategoryCode 对应，数据项用于下拉选项、状态标签等配置。</p>
 
 @if (_error is not null)
 {
-    <div class="alert alert-danger">@_error</div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
 }
 
-<div class="row g-2 mb-3">
-    <div class="col-md-4">
-        <label class="form-label">分类 CategoryCode</label>
-        <input class="form-control" @bind="_dictCategoryFilter" @bind:event="oninput" />
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
     </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-outline-primary" @onclick="LoadDictAsync" disabled="@_busy">刷新</button>
+}
+
+<div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted mb-1">字典名称</label>
+                <input class="form-control form-control-sm" placeholder="请输入字典名称" @bind="_filterName" @bind:event="oninput" disabled="@_busy" />
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small text-muted mb-1">字典类型</label>
+                <input class="form-control form-control-sm" placeholder="请输入字典类型编码" @bind="_filterCode" @bind:event="oninput" disabled="@_busy" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">状态</label>
+                <select class="form-select form-select-sm" @bind="_filterActive" disabled="@_busy">
+                    <option value="">全部</option>
+                    <option value="true">正常</option>
+                    <option value="false">停用</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">更新时间 起</label>
+                <input type="date" class="form-control form-control-sm" @bind="_filterDateFrom" disabled="@_busy" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small text-muted mb-1">更新时间 止</label>
+                <input type="date" class="form-control form-control-sm" @bind="_filterDateTo" disabled="@_busy" />
+            </div>
+            <div class="col-12 col-md-auto d-flex flex-wrap gap-2 pt-2 pt-md-0">
+                <button type="button" class="btn btn-primary btn-sm px-3" @onclick="SearchAsync" disabled="@_busy">
+                    <i class="bi bi-search me-1"></i>搜索
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ResetFiltersAsync" disabled="@_busy">重置</button>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="card mb-3">
-    <div class="card-header">新增 / 更新字典项（按 CategoryCode + ItemCode 唯一）</div>
-    <div class="card-body row g-2">
-        <div class="col-md-2"><label class="form-label">CategoryCode</label><input class="form-control" @bind="_dCat" /></div>
-        <div class="col-md-2"><label class="form-label">ItemCode</label><input class="form-control" @bind="_dItem" /></div>
-        <div class="col-md-3"><label class="form-label">DisplayName</label><input class="form-control" @bind="_dName" /></div>
-        <div class="col-md-2"><label class="form-label">SortOrder</label><input class="form-control" type="number" @bind="_dSort" /></div>
-        <div class="col-md-2"><label class="form-label">ItemValue</label><input class="form-control" @bind="_dVal" /></div>
-        <div class="col-md-1 d-flex align-items-end"><label class="form-check-label"><input type="checkbox" class="form-check-input" @bind="_dActive" /> 启用</label></div>
-        <div class="col-12"><button class="btn btn-primary" @onclick="SaveDictAsync" disabled="@_busy">保存</button></div>
+<div class="card shadow-sm border-0">
+    <div class="card-body py-2 border-bottom bg-body-tertiary">
+        <EvolverListToolbar>
+            <Start>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm" @onclick="OpenEditFromSelectionAsync" disabled="@(_busy || _selectedTypeIds.Count != 1)">
+                        <i class="bi bi-pencil-square me-1"></i>修改
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" @onclick="DeleteSelectedAsync" disabled="@(_busy || _selectedTypeIds.Count == 0)">
+                        <i class="bi bi-trash me-1"></i>删除
+                    </button>
+                </div>
+            </Start>
+            <End>
+                <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreateModal" disabled="@_busy">
+                    <i class="bi bi-plus-lg me-1"></i>新增
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ExportCsvAsync" disabled="@(_busy || _rows.Count == 0)">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAsync" disabled="@_busy">
+                    <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                </button>
+            </End>
+        </EvolverListToolbar>
     </div>
-</div>
-
-@if (_dictItems is null)
-{
-    <p>加载中…</p>
-}
-else
-{
-    <table class="table table-sm table-striped">
-        <thead>
-        <tr><th>Id</th><th>Category</th><th>Code</th><th>名称</th><th>排序</th><th>启用</th></tr>
-        </thead>
-        <tbody>
-        @foreach (var d in _dictItems)
-        {
+    <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle mb-0">
+            <thead class="table-light">
             <tr>
-                <td>@d.Id</td>
-                <td>@d.CategoryCode</td>
-                <td>@d.ItemCode</td>
-                <td>@d.DisplayName</td>
-                <td>@d.SortOrder</td>
-                <td>@d.IsActive</td>
+                <th style="width:2.5rem" class="text-center">
+                    <input type="checkbox" class="form-check-input" checked="@IsAllPageSelected" @onchange="ToggleSelectAll" disabled="@(_busy || _rows.Count == 0)" title="全选本页" />
+                </th>
+                <th style="width:5rem">编号</th>
+                <th>字典名称</th>
+                <th>字典类型</th>
+                <th style="width:6rem">状态</th>
+                <th>备注</th>
+                <th style="width:11rem">更新时间</th>
+                <th class="text-end" style="width:12rem; min-width:12rem">操作</th>
             </tr>
-        }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            @if (_rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">暂无数据</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var t in _rows)
+                {
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input" checked="@_selectedTypeIds.Contains(t.Id)" @onchange="e => ToggleRow(t.Id, e)" disabled="@_busy" />
+                        </td>
+                        <td>@t.Id</td>
+                        <td>@t.TypeName</td>
+                        <td>
+                            <button type="button" class="btn btn-link btn-sm p-0 align-baseline" @onclick="() => GoItems(t.TypeCode)" disabled="@_busy">@t.TypeCode</button>
+                        </td>
+                        <td>
+                            @if (t.IsActive)
+                            {
+                                <span class="badge text-bg-primary">正常</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">停用</span>
+                            }
+                        </td>
+                        <td class="text-truncate" style="max-width:14rem" title="@t.Remark">@(t.Remark ?? "—")</td>
+                        <td class="text-nowrap small">@FormatTime(t.UpdateTime)</td>
+                        <td class="text-end text-nowrap">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary" @onclick="() => OpenEditModal(t)" disabled="@_busy">修改</button>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="() => GoItems(t.TypeCode)" disabled="@_busy">列表</button>
+                                <button type="button" class="btn btn-outline-danger" @onclick="() => DeleteOneAsync(t)" disabled="@_busy">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (_typeModalOpen)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_typeModalEditId is null ? "添加字典类型" : "修改字典类型")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseTypeModal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_modalError is not null)
+                    {
+                        <div class="alert alert-danger py-2 small">@_modalError</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">字典名称 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="_mTypeName" @bind:event="oninput" placeholder="请输入字典名称" disabled="@_busy" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">字典类型 <span class="text-danger">*</span></label>
+                        <input class="form-control" @bind="_mTypeCode" @bind:event="oninput" placeholder="请输入字典类型编码" disabled="@(_busy || _typeModalEditId is not null)" />
+                        @if (_typeModalEditId is not null)
+                        {
+                            <div class="form-text">修改时不允许变更类型编码（与已有字典数据关联）。</div>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">状态</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="typeActive" id="type-active-y" checked="@_mTypeActive" @onchange="@(() => _mTypeActive = true)" disabled="@_busy" />
+                            <label class="form-check-label" for="type-active-y">正常</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="typeActive" id="type-active-n" checked="@(!_mTypeActive)" @onchange="@(() => _mTypeActive = false)" disabled="@_busy" />
+                            <label class="form-check-label" for="type-active-n">停用</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">排序</label>
+                        <input type="number" class="form-control" @bind="_mSortOrder" disabled="@_busy" />
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" rows="3" @bind="_mRemark" @bind:event="oninput" placeholder="请输入内容" disabled="@_busy"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SaveTypeModalAsync" disabled="@_busy">确定</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseTypeModal" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
+    private const string TypesUrl = "api/data-dictionary/types";
+
     private string? _error;
+    private string? _success;
     private bool _busy;
 
-    private List<DataDictionaryItemDto>? _dictItems;
-    private string _dictCategoryFilter = "";
-    private string _dCat = "ProductUnit";
-    private string _dItem = "pcs";
-    private string _dName = "件";
-    private string? _dVal;
-    private int _dSort;
-    private bool _dActive = true;
+    private List<DataDictionaryTypeDto> _source = new();
+    private List<DataDictionaryTypeDto> _rows = new();
+    private readonly HashSet<long> _selectedTypeIds = new();
 
-    protected override async Task OnInitializedAsync() => await LoadDictAsync();
+    private string _filterName = "";
+    private string _filterCode = "";
+    private string _filterActive = "";
+    private DateTime? _filterDateFrom;
+    private DateTime? _filterDateTo;
 
-    private async Task LoadDictAsync()
+    private bool _typeModalOpen;
+    private long? _typeModalEditId;
+    private string? _modalError;
+    private string _mTypeCode = "";
+    private string _mTypeName = "";
+    private string? _mRemark;
+    private bool _mTypeActive = true;
+    private int _mSortOrder;
+
+    private bool IsAllPageSelected =>
+        _rows.Count > 0 && _rows.All(r => _selectedTypeIds.Contains(r.Id));
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
     {
-        try
-        {
-            var url = string.IsNullOrWhiteSpace(_dictCategoryFilter)
-                ? "api/data-dictionary/items"
-                : $"api/data-dictionary/items?category={Uri.EscapeDataString(_dictCategoryFilter.Trim())}";
-            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<DataDictionaryItemDto>>>(url);
-            _dictItems = env?.Success == true ? env.Data ?? new() : new();
-            if (env?.Success == false)
-                _error = env.Message;
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-            _dictItems = new();
-        }
-    }
-
-    private async Task SaveDictAsync()
-    {
-        if (_busy) return;
         _busy = true;
         _error = null;
         try
         {
-            var body = new UpsertDataDictionaryItemDto(_dCat.Trim(), _dItem.Trim(), _dName.Trim(), _dVal, _dSort, _dActive);
-            var resp = await Http.PostAsJsonAsync("api/data-dictionary/items", body);
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<DataDictionaryTypeDto>>>(TypesUrl);
+            if (env?.Success != true)
+            {
+                _error = env?.Message ?? "加载字典类型失败。";
+                _source = new();
+            }
+            else
+                _source = env.Data ?? new();
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _source = new();
+            ApplyFilters();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<DataDictionaryTypeDto> q = _source;
+
+        if (!string.IsNullOrWhiteSpace(_filterName))
+        {
+            var n = _filterName.Trim();
+            q = q.Where(x => x.TypeName.Contains(n, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(_filterCode))
+        {
+            var c = _filterCode.Trim();
+            q = q.Where(x => x.TypeCode.Contains(c, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (_filterActive == "true")
+            q = q.Where(x => x.IsActive);
+        else if (_filterActive == "false")
+            q = q.Where(x => !x.IsActive);
+
+        if (_filterDateFrom is { } df)
+        {
+            var d = df.Date;
+            q = q.Where(x => x.UpdateTime is null || x.UpdateTime.Value.Date >= d);
+        }
+
+        if (_filterDateTo is { } dt)
+        {
+            var d = dt.Date;
+            q = q.Where(x => x.UpdateTime is null || x.UpdateTime.Value.Date <= d);
+        }
+
+        _rows = q.OrderBy(x => x.SortOrder).ThenBy(x => x.TypeCode).ToList();
+        _selectedTypeIds.RemoveWhere(id => _rows.All(r => r.Id != id));
+    }
+
+    private Task SearchAsync()
+    {
+        ApplyFilters();
+        return Task.CompletedTask;
+    }
+
+    private Task ResetFiltersAsync()
+    {
+        _filterName = "";
+        _filterCode = "";
+        _filterActive = "";
+        _filterDateFrom = null;
+        _filterDateTo = null;
+        ApplyFilters();
+        return Task.CompletedTask;
+    }
+
+    private static string FormatTime(DateTime? t) =>
+        t is { } v ? v.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) : "—";
+
+    private void ToggleRow(long id, ChangeEventArgs e)
+    {
+        if (e.Value is bool on && on)
+            _selectedTypeIds.Add(id);
+        else
+            _selectedTypeIds.Remove(id);
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        if (e.Value is not bool on)
+            return;
+        if (on)
+        {
+            foreach (var r in _rows)
+                _selectedTypeIds.Add(r.Id);
+        }
+        else
+        {
+            foreach (var r in _rows)
+                _selectedTypeIds.Remove(r.Id);
+        }
+    }
+
+    private void GoItems(string typeCode)
+    {
+        var enc = Uri.EscapeDataString(typeCode);
+        Nav.NavigateTo($"settings/data-dictionary/items/{enc}");
+    }
+
+    private void OpenCreateModal()
+    {
+        _modalError = null;
+        _typeModalEditId = null;
+        _mTypeCode = "";
+        _mTypeName = "";
+        _mRemark = null;
+        _mTypeActive = true;
+        _mSortOrder = 0;
+        _typeModalOpen = true;
+    }
+
+    private void OpenEditModal(DataDictionaryTypeDto t)
+    {
+        _modalError = null;
+        _typeModalEditId = t.Id;
+        _mTypeCode = t.TypeCode;
+        _mTypeName = t.TypeName;
+        _mRemark = t.Remark;
+        _mTypeActive = t.IsActive;
+        _mSortOrder = t.SortOrder;
+        _typeModalOpen = true;
+    }
+
+    private Task OpenEditFromSelectionAsync()
+    {
+        if (_selectedTypeIds.Count != 1)
+            return Task.CompletedTask;
+        var id = _selectedTypeIds.First();
+        var t = _rows.FirstOrDefault(x => x.Id == id) ?? _source.FirstOrDefault(x => x.Id == id);
+        if (t is null)
+            return Task.CompletedTask;
+        OpenEditModal(t);
+        return Task.CompletedTask;
+    }
+
+    private void CloseTypeModal()
+    {
+        if (_busy) return;
+        _typeModalOpen = false;
+        _modalError = null;
+    }
+
+    private async Task SaveTypeModalAsync()
+    {
+        if (_busy) return;
+        _modalError = null;
+        var code = _mTypeCode.Trim();
+        var name = _mTypeName.Trim();
+        if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(name))
+        {
+            _modalError = "请填写字典类型编码与字典名称。";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var body = new UpsertDataDictionaryTypeDto(code, name, string.IsNullOrWhiteSpace(_mRemark) ? null : _mRemark.Trim(), _mTypeActive, _mSortOrder);
+            var resp = await Http.PostAsJsonAsync(TypesUrl, body);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _modalError = string.IsNullOrWhiteSpace(text) ? $"保存失败（{(int)resp.StatusCode}）" : text;
+                return;
+            }
+
+            _typeModalOpen = false;
+            await ReloadAsync();
+            _success = "保存成功。";
+        }
+        catch (Exception ex)
+        {
+            _modalError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteOneAsync(DataDictionaryTypeDto t)
+    {
+        if (_busy) return;
+        if (!await ConfirmJs($"确定删除字典类型「{t.TypeName}」({t.TypeCode})？"))
+            return;
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/data-dictionary/types/{t.Id}");
             if (!resp.IsSuccessStatusCode)
             {
                 _error = await resp.Content.ReadAsStringAsync();
                 return;
             }
 
-            await LoadDictAsync();
+            _selectedTypeIds.Remove(t.Id);
+            _success = "已删除。";
+            await ReloadAsync();
         }
         catch (Exception ex)
         {
@@ -119,5 +468,88 @@ else
         {
             _busy = false;
         }
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_busy || _selectedTypeIds.Count == 0) return;
+        if (!await ConfirmJs($"确定删除选中的 {_selectedTypeIds.Count} 条字典类型？"))
+            return;
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            foreach (var id in _selectedTypeIds.ToList())
+            {
+                var resp = await Http.DeleteAsync($"api/data-dictionary/types/{id}");
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var msg = await resp.Content.ReadAsStringAsync();
+                    _error = $"删除 Id={id} 失败：{msg}";
+                    return;
+                }
+            }
+
+            _selectedTypeIds.Clear();
+            _success = "已删除选中项。";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task<bool> ConfirmJs(string message)
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("confirm", message);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task ExportCsvAsync()
+    {
+        if (_rows.Count == 0) return;
+        var sb = new StringBuilder();
+        sb.Append('\uFEFF');
+        sb.AppendLine("字典编号,字典名称,字典类型,状态,备注,更新时间");
+        foreach (var t in _rows)
+        {
+            var status = t.IsActive ? "正常" : "停用";
+            sb.Append(t.Id).Append(',');
+            sb.Append(CsvEscape(t.TypeName)).Append(',');
+            sb.Append(CsvEscape(t.TypeCode)).Append(',');
+            sb.Append(status).Append(',');
+            sb.Append(CsvEscape(t.Remark ?? "")).Append(',');
+            sb.AppendLine(CsvEscape(FormatTime(t.UpdateTime)));
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("evolverDownloadTextFile", $"dictionary_types_{DateTime.Now:yyyyMMdd_HHmmss}.csv", sb.ToString(), "text/csv;charset=utf-8");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string CsvEscape(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var t = s.Replace("\"", "\"\"");
+        if (t.Contains(',') || t.Contains('"') || t.Contains('\n') || t.Contains('\r'))
+            return $"\"{t}\"";
+        return t;
     }
 }
