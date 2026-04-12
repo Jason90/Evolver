@@ -405,19 +405,17 @@ def emit_table(
         uc = map_identifier(ucol)
         extras.append(f"\tCONSTRAINT [UQ_{uname}] UNIQUE ([{uc}])")
 
-    pk_sql = rebuild_pk_constraint(pk_part, new_name)
+    pk_sql = rebuild_pk_constraint(pk_part, new_name).strip()
 
-    parts: list[str] = [f"CREATE TABLE [dbo].[{new_name}]("]
-    if col_lines:
-        for i, ln in enumerate(col_lines):
-            comma = "," if i < len(col_lines) - 1 or pk_sql or extras else ""
-            parts.append(ln + comma)
-    parts.append(pk_sql.rstrip(","))
+    lines_out: list[str] = [f"CREATE TABLE [dbo].[{new_name}]("]
+    for cl in col_lines:
+        lines_out.append(cl + ",")
+    lines_out.append(pk_sql)
     for ex in extras:
-        parts.append(",\n" + ex)
-    parts.append(") ON [PRIMARY]")
-    parts.append("GO")
-    return "\n".join(parts) + "\n"
+        lines_out.append("," + ex)
+    lines_out.append(") ON [PRIMARY]")
+    lines_out.append("GO")
+    return "\n".join(lines_out) + "\n"
 
 
 def build_descriptions(

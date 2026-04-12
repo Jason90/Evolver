@@ -2,6 +2,7 @@
 # 若需将 /doc 或 /code 纳入版本库，请删除或注释对应行。
 /code
 /doc
+/tools
 
 # --- Build outputs (.NET / MSBuild) ---
 [Bb]in/
