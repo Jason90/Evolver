@@ -1,6 +1,6 @@
 @page "/settings/users"
-@using System.Net.Http.Json
 @using System.Text.Json
+@using System.Text.RegularExpressions
 @inject HttpClient Http
 @inject AuthTokenStore Tokens
 
@@ -25,248 +25,287 @@
     </div>
 }
 
-<div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-    <button type="button" class="btn btn-primary" @onclick="OpenCreateAsync" disabled="@_busy">新建用户</button>
-    <button type="button" class="btn btn-outline-secondary" @onclick="ReloadAllAsync" disabled="@_busy">刷新</button>
-</div>
+@if (_pane == UserPane.List)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-primary" @onclick="OpenCreateAsync" disabled="@_busy">新建用户</button>
+        <button type="button" class="btn btn-outline-secondary" @onclick="ReloadAllAsync" disabled="@_busy">刷新</button>
+    </div>
 
-@if (_users is null)
-{
-    <p>加载中…</p>
-}
-else
-{
-    <div class="table-responsive">
-        <table class="table table-sm table-hover align-middle">
-            <thead>
-            <tr>
-                <th>Id</th>
-                <th>用户名</th>
-                <th>Email</th>
-                <th>电话</th>
-                <th>角色</th>
-                <th style="width:14rem">操作</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var u in _users)
-            {
+    @if (_users is null)
+    {
+        <p>加载中…</p>
+    }
+    else
+    {
+        <div class="table-responsive border rounded">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
                 <tr>
-                    <td>@u.Id</td>
-                    <td>@u.UserName</td>
-                    <td>@(u.Email ?? "—")</td>
-                    <td>@(u.PhoneNumber ?? "—")</td>
-                    <td>@string.Join(", ", u.Roles)</td>
-                    <td>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-primary" @onclick="() => OpenEditAsync(u.Id)" disabled="@_busy">编辑</button>
-                            <button type="button" class="btn btn-outline-secondary" @onclick="() => OpenPasswordModal(u.Id)" disabled="@_busy">重置密码</button>
-                            <button type="button" class="btn btn-outline-danger" @onclick="() => _deleteId = u.Id" disabled="@(_busy || IsCurrentUser(u.Id))">删除</button>
-                        </div>
-                    </td>
+                    <th>Id</th>
+                    <th>用户名</th>
+                    <th>Email</th>
+                    <th>电话</th>
+                    <th>角色</th>
+                    <th style="width:14rem">操作</th>
                 </tr>
+                </thead>
+                <tbody>
+                @foreach (var u in _users)
+                {
+                    <tr>
+                        <td>@u.Id</td>
+                        <td>@u.UserName</td>
+                        <td>@(u.Email ?? "—")</td>
+                        <td>@(u.PhoneNumber ?? "—")</td>
+                        <td>@string.Join(", ", u.Roles)</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary" @onclick="() => OpenEditAsync(u.Id)" disabled="@_busy">编辑</button>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="() => OpenPasswordPane(u.Id, u.UserName)" disabled="@_busy">重置密码</button>
+                                <button type="button" class="btn btn-outline-danger" @onclick="() => OpenDeletePane(u.Id)" disabled="@(_busy || IsCurrentUser(u.Id))">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+else if (_pane == UserPane.Create)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回用户列表</button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">新建用户</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                    <input class="form-control @(string.IsNullOrEmpty(DisplayCreateUserNameError()) ? "" : "is-invalid")"
+                           @bind="_cUserName" @bind:event="oninput" autocomplete="off" />
+                    @if (DisplayCreateUserNameError() is { } uErr)
+                    {
+                        <div class="invalid-feedback d-block">@uErr</div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">初始密码 <span class="text-danger">*</span></label>
+                    <input class="form-control @(string.IsNullOrEmpty(DisplayCreatePasswordError()) ? "" : "is-invalid")"
+                           type="password" @bind="_cPassword" @bind:event="oninput" autocomplete="new-password" />
+                    @if (DisplayCreatePasswordError() is { } pErr)
+                    {
+                        <div class="invalid-feedback d-block">@pErr</div>
+                    }
+                    else if (!string.IsNullOrEmpty(_cPassword))
+                    {
+                        <small class="text-muted">@GetPasswordStrengthHint(_cPassword)</small>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input class="form-control @(string.IsNullOrEmpty(DisplayCreateEmailError()) ? "" : "is-invalid")"
+                           type="email" @bind="_cEmail" @bind:event="oninput" />
+                    @if (DisplayCreateEmailError() is { } eErr)
+                    {
+                        <div class="invalid-feedback d-block">@eErr</div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">电话</label>
+                    <input class="form-control @(string.IsNullOrEmpty(DisplayCreatePhoneError()) ? "" : "is-invalid")"
+                           @bind="_cPhone" @bind:event="oninput" />
+                    @if (DisplayCreatePhoneError() is { } phErr)
+                    {
+                        <div class="invalid-feedback d-block">@phErr</div>
+                    }
+                </div>
+            </div>
+            @if (_roleOptions.Count > 0)
+            {
+                <div class="mt-3">
+                    <label class="form-label">角色</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        @foreach (var r in _roleOptions)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="@($"cr-{r.Id}")"
+                                       checked="@_cRoles.Contains(r.Name)"
+                                       @onchange="e => ToggleSet(_cRoles, r.Name, e)" />
+                                <label class="form-check-label" for="@($"cr-{r.Id}")">@r.Name</label>
+                            </div>
+                        }
+                    </div>
+                </div>
             }
-            </tbody>
-        </table>
-    </div>
-}
-
-@if (_createOpen)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">新建用户</h5>
-                    <button type="button" class="btn-close" @onclick="CloseCreate"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="form-label">用户名 <span class="text-danger">*</span></label>
-                            <input class="form-control" @bind="_cUserName" autocomplete="off" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">初始密码 <span class="text-danger">*</span></label>
-                            <input class="form-control" type="password" @bind="_cPassword" autocomplete="new-password" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input class="form-control" type="email" @bind="_cEmail" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">电话</label>
-                            <input class="form-control" @bind="_cPhone" />
-                        </div>
+            @if (_orgRoots is { Count: > 0 })
+            {
+                <div class="mt-3">
+                    <label class="form-label">关联组织（多选）</label>
+                    <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
+                        @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
+                        {
+                            <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
+                                <input class="form-check-input" type="checkbox" id="@($"co-{node.Id}")"
+                                       checked="@_cOrgIds.Contains(node.Id)"
+                                       @onchange="e => ToggleSet(_cOrgIds, node.Id, e)" />
+                                <label class="form-check-label" for="@($"co-{node.Id}")">@node.Name</label>
+                            </div>
+                        }
                     </div>
-                    @if (_roleOptions.Count > 0)
-                    {
-                        <div class="mt-3">
-                            <label class="form-label">角色</label>
-                            <div class="d-flex flex-wrap gap-3">
-                                @foreach (var r in _roleOptions)
-                                {
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="@($"cr-{r.Id}")"
-                                               checked="@_cRoles.Contains(r.Name)"
-                                               @onchange="e => ToggleSet(_cRoles, r.Name, e)" />
-                                        <label class="form-check-label" for="@($"cr-{r.Id}")">@r.Name</label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                    @if (_orgRoots is { Count: > 0 })
-                    {
-                        <div class="mt-3">
-                            <label class="form-label">关联组织（多选）</label>
-                            <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
-                                @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
-                                {
-                                    <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
-                                        <input class="form-check-input" type="checkbox" id="@($"co-{node.Id}")"
-                                               checked="@_cOrgIds.Contains(node.Id)"
-                                               @onchange="e => ToggleSet(_cOrgIds, node.Id, e)" />
-                                        <label class="form-check-label" for="@($"co-{node.Id}")">@node.Name</label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseCreate" disabled="@_busy">取消</button>
-                    <button type="button" class="btn btn-primary" @onclick="CreateUserAsync" disabled="@_busy">创建</button>
-                </div>
+            }
+            <div class="mt-4 d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="CreateUserAsync" disabled="@(_busy || !IsCreateFormValid())">保存</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
             </div>
         </div>
     </div>
 }
-
-@if (_editOpen && _editDetail is not null)
+else if (_pane == UserPane.Edit && _editDetail is not null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">编辑用户 — @_editDetail.UserName</h5>
-                    <button type="button" class="btn-close" @onclick="CloseEdit"></button>
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回用户列表</button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">编辑用户 — @_editDetail.UserName</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">用户名</label>
+                    <input class="form-control" value="@_editDetail.UserName" disabled />
                 </div>
-                <div class="modal-body">
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="form-label">用户名</label>
-                            <input class="form-control" value="@_editDetail.UserName" disabled />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input class="form-control" type="email" @bind="_eEmail" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">电话</label>
-                            <input class="form-control" @bind="_ePhone" />
-                        </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input class="form-control @(string.IsNullOrEmpty(DisplayEditEmailError()) ? "" : "is-invalid")"
+                           type="email" @bind="_eEmail" @bind:event="oninput" />
+                    @if (DisplayEditEmailError() is { } eeErr)
+                    {
+                        <div class="invalid-feedback d-block">@eeErr</div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">电话</label>
+                    <input class="form-control @(string.IsNullOrEmpty(DisplayEditPhoneError()) ? "" : "is-invalid")"
+                           @bind="_ePhone" @bind:event="oninput" />
+                    @if (DisplayEditPhoneError() is { } epErr)
+                    {
+                        <div class="invalid-feedback d-block">@epErr</div>
+                    }
+                </div>
+            </div>
+            @if (_roleOptions.Count > 0)
+            {
+                <div class="mt-3">
+                    <label class="form-label">角色</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        @foreach (var r in _roleOptions)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="@($"er-{r.Id}")"
+                                       checked="@_eRoles.Contains(r.Name)"
+                                       @onchange="e => ToggleSet(_eRoles, r.Name, e)" />
+                                <label class="form-check-label" for="@($"er-{r.Id}")">@r.Name</label>
+                            </div>
+                        }
                     </div>
-                    @if (_roleOptions.Count > 0)
-                    {
-                        <div class="mt-3">
-                            <label class="form-label">角色</label>
-                            <div class="d-flex flex-wrap gap-3">
-                                @foreach (var r in _roleOptions)
-                                {
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="@($"er-{r.Id}")"
-                                               checked="@_eRoles.Contains(r.Name)"
-                                               @onchange="e => ToggleSet(_eRoles, r.Name, e)" />
-                                        <label class="form-check-label" for="@($"er-{r.Id}")">@r.Name</label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
-                    @if (_orgRoots is { Count: > 0 })
-                    {
-                        <div class="mt-3">
-                            <label class="form-label">关联组织（多选）</label>
-                            <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
-                                @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
-                                {
-                                    <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
-                                        <input class="form-check-input" type="checkbox" id="@($"eo-{node.Id}")"
-                                               checked="@_eOrgIds.Contains(node.Id)"
-                                               @onchange="e => ToggleSet(_eOrgIds, node.Id, e)" />
-                                        <label class="form-check-label" for="@($"eo-{node.Id}")">@node.Name</label>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    }
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseEdit" disabled="@_busy">取消</button>
-                    <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@_busy">保存</button>
+            }
+            @if (_orgRoots is { Count: > 0 })
+            {
+                <div class="mt-3">
+                    <label class="form-label">关联组织（多选）</label>
+                    <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
+                        @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
+                        {
+                            <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
+                                <input class="form-check-input" type="checkbox" id="@($"eo-{node.Id}")"
+                                       checked="@_eOrgIds.Contains(node.Id)"
+                                       @onchange="e => ToggleSet(_eOrgIds, node.Id, e)" />
+                                <label class="form-check-label" for="@($"eo-{node.Id}")">@node.Name</label>
+                            </div>
+                        }
+                    </div>
                 </div>
+            }
+            <div class="mt-4 d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@(_busy || !IsEditFormValid())">保存</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
             </div>
         </div>
     </div>
 }
-
-@if (_passwordUserId is not null)
+else if (_pane == UserPane.ResetPassword && _passwordUserId is not null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">重置密码 — 用户 Id @_passwordUserId</h5>
-                    <button type="button" class="btn-close" @onclick="ClosePassword"></button>
-                </div>
-                <div class="modal-body">
-                    <label class="form-label">新密码（至少 6 位）</label>
-                    <input class="form-control" type="password" @bind="_newPassword" autocomplete="new-password" />
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="ClosePassword" disabled="@_busy">取消</button>
-                    <button type="button" class="btn btn-primary" @onclick="SavePasswordAsync" disabled="@_busy">确定</button>
-                </div>
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回用户列表</button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">重置密码 — @_passwordUserLabel</div>
+        <div class="card-body">
+            <label class="form-label">新密码 <span class="text-danger">*</span></label>
+            <input class="form-control @(string.IsNullOrEmpty(DisplayPasswordResetError()) ? "" : "is-invalid")"
+                   type="password" @bind="_newPassword" @bind:event="oninput" autocomplete="new-password" />
+            @if (DisplayPasswordResetError() is { } npErr)
+            {
+                <div class="invalid-feedback d-block">@npErr</div>
+            }
+            else if (!string.IsNullOrEmpty(_newPassword))
+            {
+                <small class="text-muted">@GetPasswordStrengthHint(_newPassword)</small>
+            }
+            <div class="mt-4 d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="SavePasswordAsync" disabled="@(_busy || !IsNewPasswordValid())">保存</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
             </div>
         </div>
     </div>
 }
-
-@if (_deleteId is not null)
+else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.45)">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">确认删除</h5>
-                    <button type="button" class="btn-close" @onclick="() => _deleteId = null"></button>
-                </div>
-                <div class="modal-body">
-                    确定删除用户 Id <strong>@_deleteId</strong>？此操作为软删除。
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => _deleteId = null" disabled="@_busy">取消</button>
-                    <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
-                </div>
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回用户列表</button>
+    </div>
+
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">确认删除</div>
+        <div class="card-body">
+            <p class="mb-3">确定删除用户 Id <strong>@_deleteId</strong>？此操作为软删除。</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
             </div>
         </div>
     </div>
 }
 
 @code {
+    private enum UserPane { List, Create, Edit, ResetPassword, DeleteConfirm }
+
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly Regex EmailRegex = new(
+        @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private const int PasswordMinLength = 6;
 
     private string? _error;
     private string? _success;
     private bool _busy;
     private long? _currentUserId;
 
+    private UserPane _pane = UserPane.List;
+
     private List<UserListItemDto>? _users;
     private List<RoleDto> _roleOptions = new();
     private List<OrganizationTreeNodeDto> _orgRoots = new();
 
-    private bool _createOpen;
     private string _cUserName = "";
     private string _cPassword = "";
     private string? _cEmail;
@@ -274,7 +313,10 @@ else
     private readonly HashSet<string> _cRoles = new(StringComparer.Ordinal);
     private readonly HashSet<long> _cOrgIds = new();
 
-    private bool _editOpen;
+    private bool _createAttempted;
+    private bool _editAttempted;
+    private bool _passwordAttempted;
+
     private long _editId;
     private UserDetailDto? _editDetail;
     private string? _eEmail;
@@ -283,6 +325,7 @@ else
     private readonly HashSet<long> _eOrgIds = new();
 
     private long? _passwordUserId;
+    private string _passwordUserLabel = "";
     private string _newPassword = "";
 
     private long? _deleteId;
@@ -302,6 +345,20 @@ else
         await Task.WhenAll(LoadUsersAsync(), LoadRolesAsync(), LoadOrgTreeAsync());
     }
 
+    private async Task CancelToListAsync()
+    {
+        _pane = UserPane.List;
+        _editDetail = null;
+        _passwordUserId = null;
+        _passwordUserLabel = "";
+        _newPassword = "";
+        _deleteId = null;
+        _createAttempted = false;
+        _editAttempted = false;
+        _passwordAttempted = false;
+        await LoadUsersAsync();
+    }
+
     private async Task OpenCreateAsync()
     {
         _error = null;
@@ -312,12 +369,11 @@ else
         _cPhone = null;
         _cRoles.Clear();
         _cOrgIds.Clear();
+        _createAttempted = false;
         if (_orgRoots.Count == 0)
             await LoadOrgTreeAsync();
-        _createOpen = true;
+        _pane = UserPane.Create;
     }
-
-    private void CloseCreate() => _createOpen = false;
 
     private async Task OpenEditAsync(long id)
     {
@@ -347,7 +403,8 @@ else
             foreach (var o in env.Data.OrganizationIds)
                 _eOrgIds.Add(o);
 
-            _editOpen = true;
+            _editAttempted = false;
+            _pane = UserPane.Edit;
         }
         catch (Exception ex)
         {
@@ -359,24 +416,158 @@ else
         }
     }
 
-    private void CloseEdit()
-    {
-        _editOpen = false;
-        _editDetail = null;
-    }
-
-    private void OpenPasswordModal(long id)
+    private void OpenPasswordPane(long id, string userName)
     {
         _error = null;
         _success = null;
         _passwordUserId = id;
+        _passwordUserLabel = $"用户 Id {id}" + (string.IsNullOrWhiteSpace(userName) ? "" : $"（{userName}）");
         _newPassword = "";
+        _passwordAttempted = false;
+        _pane = UserPane.ResetPassword;
     }
 
-    private void ClosePassword()
+    private void OpenDeletePane(long id)
     {
-        _passwordUserId = null;
-        _newPassword = "";
+        _error = null;
+        _success = null;
+        _deleteId = id;
+        _pane = UserPane.DeleteConfirm;
+    }
+
+    private static int PasswordCharacterClassCount(string p)
+    {
+        var letter = false;
+        var digit = false;
+        var symbol = false;
+        foreach (var ch in p)
+        {
+            if (char.IsLetter(ch)) letter = true;
+            else if (char.IsDigit(ch)) digit = true;
+            else if (!char.IsWhiteSpace(ch)) symbol = true;
+        }
+
+        return (letter ? 1 : 0) + (digit ? 1 : 0) + (symbol ? 1 : 0);
+    }
+
+    /// <summary>与后端 Identity 最低长度一致，并额外要求至少两类字符（字母 / 数字 / 符号）。</summary>
+    private static bool MeetsPasswordComplexity(string p)
+        => p.Length >= PasswordMinLength && PasswordCharacterClassCount(p) >= 2;
+
+    private static string GetPasswordStrengthHint(string p)
+    {
+        if (string.IsNullOrEmpty(p))
+            return "";
+
+        var classes = PasswordCharacterClassCount(p);
+        var len = p.Length;
+        if (!MeetsPasswordComplexity(p))
+            return "须至少 6 位，且同时包含字母、数字、符号中的至少两类。";
+
+        if (len >= 12 && classes >= 3)
+            return "强度：强";
+        if (len >= 10 || classes >= 3)
+            return "强度：中";
+        return "强度：弱（可加长或混合更多字符类型）";
+    }
+
+    private static string? ValidateUserName(string? s)
+    {
+        var t = s?.Trim() ?? "";
+        if (string.IsNullOrEmpty(t))
+            return "请输入用户名。";
+        if (t.Length < 2)
+            return "用户名至少 2 个字符。";
+        return null;
+    }
+
+    private static string? ValidatePassword(string? p)
+    {
+        if (string.IsNullOrEmpty(p))
+            return "请输入密码。";
+        return MeetsPasswordComplexity(p) ? null : "密码至少 6 位，且须包含字母、数字、符号中的至少两类。";
+    }
+
+    private static string? ValidateOptionalEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+        var t = email.Trim();
+        return EmailRegex.IsMatch(t) ? null : "Email 格式不正确。";
+    }
+
+    private static string? ValidateOptionalPhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return null;
+        var t = phone.Trim();
+        if (t.Length < 5 || t.Length > 32)
+            return "电话长度应在 5～32 位之间。";
+        return null;
+    }
+
+    private bool IsCreateFormValid()
+        => ValidateUserName(_cUserName) is null
+           && ValidatePassword(_cPassword) is null
+           && ValidateOptionalEmail(_cEmail) is null
+           && ValidateOptionalPhone(_cPhone) is null;
+
+    private bool IsEditFormValid()
+        => ValidateOptionalEmail(_eEmail) is null && ValidateOptionalPhone(_ePhone) is null;
+
+    private static string? ValidateNewPasswordField(string? p)
+        => string.IsNullOrEmpty(p) ? "请输入新密码。" : ValidatePassword(p);
+
+    private bool IsNewPasswordValid()
+        => ValidateNewPasswordField(_newPassword) is null;
+
+    private string? DisplayCreateUserNameError()
+    {
+        var err = ValidateUserName(_cUserName);
+        if (err is null) return null;
+        return _createAttempted || !string.IsNullOrWhiteSpace(_cUserName) ? err : null;
+    }
+
+    private string? DisplayCreatePasswordError()
+    {
+        var err = ValidatePassword(_cPassword);
+        if (err is null) return null;
+        return _createAttempted || !string.IsNullOrEmpty(_cPassword) ? err : null;
+    }
+
+    private string? DisplayCreateEmailError()
+    {
+        var err = ValidateOptionalEmail(_cEmail);
+        if (err is null) return null;
+        return !string.IsNullOrWhiteSpace(_cEmail) ? err : null;
+    }
+
+    private string? DisplayCreatePhoneError()
+    {
+        var err = ValidateOptionalPhone(_cPhone);
+        if (err is null) return null;
+        return !string.IsNullOrWhiteSpace(_cPhone) ? err : null;
+    }
+
+    private string? DisplayEditEmailError()
+    {
+        var err = ValidateOptionalEmail(_eEmail);
+        if (err is null) return null;
+        return !string.IsNullOrWhiteSpace(_eEmail) || _editAttempted ? err : null;
+    }
+
+    private string? DisplayEditPhoneError()
+    {
+        var err = ValidateOptionalPhone(_ePhone);
+        if (err is null) return null;
+        return !string.IsNullOrWhiteSpace(_ePhone) || _editAttempted ? err : null;
+    }
+
+    private string? DisplayPasswordResetError()
+    {
+        var err = ValidateNewPasswordField(_newPassword);
+        if (err is null) return null;
+        return _passwordAttempted || !string.IsNullOrEmpty(_newPassword) ? err : null;
     }
 
     private async Task LoadUsersAsync()
@@ -424,11 +615,9 @@ else
     private async Task CreateUserAsync()
     {
         if (_busy) return;
-        if (string.IsNullOrWhiteSpace(_cUserName) || string.IsNullOrEmpty(_cPassword))
-        {
-            _error = "请填写用户名与初始密码。";
+        _createAttempted = true;
+        if (!IsCreateFormValid())
             return;
-        }
 
         _busy = true;
         _error = null;
@@ -458,15 +647,13 @@ else
                 if (!orgResp.IsSuccessStatusCode)
                 {
                     _error = ReadErrorText(await orgResp.Content.ReadAsStringAsync());
-                    await LoadUsersAsync();
-                    _createOpen = false;
+                    await CancelToListAsync();
                     return;
                 }
             }
 
             _success = "用户已创建。";
-            _createOpen = false;
-            await LoadUsersAsync();
+            await CancelToListAsync();
         }
         catch (Exception ex)
         {
@@ -481,6 +668,10 @@ else
     private async Task SaveEditAsync()
     {
         if (_busy || _editDetail is null) return;
+        _editAttempted = true;
+        if (!IsEditFormValid())
+            return;
+
         _busy = true;
         _error = null;
         _success = null;
@@ -513,8 +704,7 @@ else
             }
 
             _success = "已保存。";
-            CloseEdit();
-            await LoadUsersAsync();
+            await CancelToListAsync();
         }
         catch (Exception ex)
         {
@@ -529,11 +719,9 @@ else
     private async Task SavePasswordAsync()
     {
         if (_busy || _passwordUserId is not { } uid) return;
-        if (string.IsNullOrEmpty(_newPassword) || _newPassword.Length < 6)
-        {
-            _error = "新密码至少 6 位。";
+        _passwordAttempted = true;
+        if (!IsNewPasswordValid())
             return;
-        }
 
         _busy = true;
         _error = null;
@@ -548,7 +736,7 @@ else
             }
 
             _success = "密码已更新。";
-            ClosePassword();
+            await CancelToListAsync();
         }
         catch (Exception ex)
         {
@@ -575,9 +763,8 @@ else
                 return;
             }
 
-            _deleteId = null;
             _success = "已删除。";
-            await LoadUsersAsync();
+            await CancelToListAsync();
         }
         catch (Exception ex)
         {
