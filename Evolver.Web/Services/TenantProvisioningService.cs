@@ -17,6 +17,8 @@ public sealed class TenantProvisioningService(
     IOptions<PlatformOptions> platformOptions)
 {
     private readonly PlatformOptions _platform = platformOptions.Value;
+    private static bool IsExpired(Tenant t) => t.ExpireAt is { } d && d.Date < DateTime.UtcNow.Date;
+    private static string BuildStatusText(Tenant t) => (!t.IsActive || IsExpired(t)) ? "停用" : "正常";
 
     public async Task<ProvisionTenantResponseDto> ProvisionAsync(ProvisionTenantRequestDto dto, CancellationToken ct)
     {
@@ -32,7 +34,7 @@ public sealed class TenantProvisioningService(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
         var existsName = await db.Tenants.IgnoreQueryFilters()
-            .AnyAsync(t => t.Name == tenantName && !t.IsDeleted, ct);
+            .AnyAsync(t => t.Name == tenantName && t.IsActive, ct);
         if (existsName)
             throw new InvalidOperationException($"租户名称「{tenantName}」已存在。");
 
@@ -45,7 +47,10 @@ public sealed class TenantProvisioningService(
             TenantId = newTenantId,
             OrgId = 0,
             Name = tenantName,
-            IsDeleted = false
+            IsActive = dto.IsActive,
+            ExpireAt = dto.ExpireAt,
+            Remark = string.IsNullOrWhiteSpace(dto.Remark) ? null : dto.Remark.Trim(),
+            CreateTime = DateTime.UtcNow
         });
         await db.SaveChangesAsync(ct);
 
@@ -164,14 +169,28 @@ public sealed class TenantProvisioningService(
         return new ProvisionTenantResponseDto(newTenantId, tenantName, rootOrgName, adminName);
     }
 
-    public async Task<IReadOnlyList<TenantListItemDto>> ListAllAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<TenantListItemDto>> ListAllAsync(string? status, DateTime? expireFrom, DateTime? expireTo, CancellationToken ct)
     {
-        var tenants = await db.Tenants
+        var query = db.Tenants
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(t => !t.IsDeleted)
-            .OrderBy(t => t.Id)
-            .ToListAsync(ct);
+            .AsQueryable();
+
+        if (string.Equals(status, "active", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(t => t.IsActive && (t.ExpireAt == null || t.ExpireAt.Value.Date >= DateTime.UtcNow.Date));
+        }
+        else if (string.Equals(status, "inactive", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(t => !t.IsActive || (t.ExpireAt != null && t.ExpireAt.Value.Date < DateTime.UtcNow.Date));
+        }
+
+        if (expireFrom is { } from)
+            query = query.Where(t => t.ExpireAt != null && t.ExpireAt.Value.Date >= from.Date);
+        if (expireTo is { } to)
+            query = query.Where(t => t.ExpireAt != null && t.ExpireAt.Value.Date <= to.Date);
+
+        var tenants = await query.OrderBy(t => t.Id).ToListAsync(ct);
 
         if (tenants.Count == 0)
             return Array.Empty<TenantListItemDto>();
@@ -214,8 +233,14 @@ public sealed class TenantProvisioningService(
                 t.Id,
                 t.Name,
                 rootOrg ?? "",
+                t.CreateTime,
+                t.UpdateTime,
+                t.ExpireAt,
+                t.IsActive,
+                BuildStatusText(t),
                 adm?.UserName ?? "",
-                string.IsNullOrWhiteSpace(adm?.Email) ? null : adm.Email));
+                string.IsNullOrWhiteSpace(adm?.Email) ? null : adm.Email,
+                t.Remark));
         }
 
         return list;
@@ -226,7 +251,7 @@ public sealed class TenantProvisioningService(
         var t = await db.Tenants
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted, ct);
+            .FirstOrDefaultAsync(x => x.Id == id && x.IsActive, ct);
         if (t is null)
             return null;
 
@@ -250,21 +275,24 @@ public sealed class TenantProvisioningService(
             t.Id,
             t.Name,
             rootOrgName,
+            t.CreateTime,
+            t.UpdateTime,
+            t.ExpireAt,
+            t.IsActive,
+            BuildStatusText(t),
             admin?.UserName ?? "",
-            string.IsNullOrWhiteSpace(admin?.Email) ? null : admin.Email);
+            string.IsNullOrWhiteSpace(admin?.Email) ? null : admin.Email,
+            t.Remark);
     }
 
-    public async Task UpdateTenantNameAsync(int id, string name, CancellationToken ct)
+    public async Task UpdateTenantAsync(int id, UpdateTenantDto dto, CancellationToken ct)
     {
-        if (id == _platform.PlatformTenantId)
-            throw new InvalidOperationException("不能修改平台租户名称。");
-
-        var trimmed = name.Trim();
+        var trimmed = dto.TenantName.Trim();
         if (string.IsNullOrEmpty(trimmed))
-            throw new ArgumentException("租户名称不能为空。", nameof(name));
+            throw new ArgumentException("租户名称不能为空。", nameof(dto));
 
         var dup = await db.Tenants.IgnoreQueryFilters()
-            .AnyAsync(t => t.Name == trimmed && t.Id != id && !t.IsDeleted, ct);
+            .AnyAsync(t => t.Name == trimmed && t.Id != id && t.IsActive, ct);
         if (dup)
             throw new InvalidOperationException($"租户名称「{trimmed}」已存在。");
 
@@ -272,10 +300,39 @@ public sealed class TenantProvisioningService(
             .FirstOrDefaultAsync(t => t.Id == id, ct);
         if (entity is null)
             throw new KeyNotFoundException();
-        if (entity.IsDeleted)
-            throw new InvalidOperationException("该租户已删除。");
+        // 平台租户仅允许编辑展示信息，不允许停用。
+        if (id == _platform.PlatformTenantId && !dto.IsActive)
+            throw new InvalidOperationException("平台租户不可停用。");
 
         entity.Name = trimmed;
+        entity.IsActive = dto.IsActive;
+        entity.ExpireAt = dto.ExpireAt;
+        entity.Remark = string.IsNullOrWhiteSpace(dto.Remark) ? null : dto.Remark.Trim();
+        entity.UpdateTime = DateTime.UtcNow;
+
+        var root = await db.Organizations.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.TenantId == id && o.OrgId == 1 && o.ParentId == null, ct);
+        if (root is not null)
+        {
+            var rootName = dto.RootOrgName.Trim();
+            if (!string.IsNullOrEmpty(rootName))
+                root.Name = rootName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.AdminEmail))
+        {
+            var admin = await (
+                from u in db.Users
+                join ur in db.UserRoles on u.Id equals ur.UserId
+                join r in db.Roles on ur.RoleId equals r.Id
+                where u.TenantId == id && r.TenantId == id && r.Name == "Admin"
+                orderby u.Id
+                select u
+            ).FirstOrDefaultAsync(ct);
+            if (admin is not null)
+                admin.Email = dto.AdminEmail.Trim();
+        }
+
         await db.SaveChangesAsync(ct);
     }
 
@@ -288,10 +345,10 @@ public sealed class TenantProvisioningService(
             .FirstOrDefaultAsync(t => t.Id == id, ct);
         if (entity is null)
             throw new KeyNotFoundException();
-        if (entity.IsDeleted)
+        if (!entity.IsActive)
             return;
 
-        entity.IsDeleted = true;
+        entity.IsActive = false;
         await db.SaveChangesAsync(ct);
     }
 }

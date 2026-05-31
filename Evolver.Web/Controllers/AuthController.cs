@@ -2,6 +2,7 @@ using Evolver.Application.Security;
 using Evolver.Core.Entities;
 using Evolver.Shared.Api;
 using Evolver.Shared.Dtos;
+using Evolver.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,7 @@ public sealed class AuthController(
     SignInManager<AppUser> signInManager,
     UserManager<AppUser> userManager,
     JwtTokenService tokenService,
+    AppDbContext db,
     IOptions<JwtOptions> jwtOptions,
     IHostEnvironment hostEnvironment
 ) : ControllerBase
@@ -47,6 +49,15 @@ public sealed class AuthController(
         var user = await ResolveUserByLoginNameAsync(trimmed, req.TenantId);
         if (user is null)
             return Unauthorized(ApiEnvelope.Fail("login_failed", "用户名或密码错误。"));
+
+        var tenantOk = await db.Tenants.IgnoreQueryFilters().AsNoTracking()
+            .AnyAsync(t => t.Id == user.TenantId && t.IsActive && (t.ExpireAt == null || t.ExpireAt.Value.Date >= DateTime.UtcNow.Date));
+        if (!tenantOk)
+        {
+            return StatusCode(
+                StatusCodes.Status403Forbidden,
+                ApiEnvelope.Fail("tenant_disabled", "该租户已停用或已过期，暂不可登录。"));
+        }
 
         if (!user.IsActive)
         {

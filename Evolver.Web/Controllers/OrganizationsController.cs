@@ -31,6 +31,8 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
                 x.ParentId,
                 x.Name,
                 x.OrgType,
+                x.IsActive,
+                x.UpdateTime,
                 new List<OrganizationTreeNodeDto>()));
 
         var roots = new List<OrganizationTreeNodeDto>();
@@ -52,7 +54,7 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
         var row = await db.Organizations.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (row is null)
             return NotFound();
-        return Ok(new OrganizationDto(row.Id, row.ParentId, row.Name, row.OrgType));
+        return Ok(new OrganizationDto(row.Id, row.ParentId, row.Name, row.OrgType, row.IsActive, row.UpdateTime));
     }
 
     [HttpPost]
@@ -76,13 +78,14 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
             OrgId = tenant.OrgId,
             ParentId = dto.ParentId,
             Name = name,
-            OrgType = string.IsNullOrWhiteSpace(dto.OrgType) ? null : dto.OrgType.Trim()
+            OrgType = string.IsNullOrWhiteSpace(dto.OrgType) ? null : dto.OrgType.Trim(),
+            IsActive = dto.IsActive
         };
 
         db.Organizations.Add(entity);
         await db.SaveChangesAsync(ct);
 
-        return Ok(new OrganizationDto(entity.Id, entity.ParentId, entity.Name, entity.OrgType));
+        return Ok(new OrganizationDto(entity.Id, entity.ParentId, entity.Name, entity.OrgType, entity.IsActive, entity.UpdateTime));
     }
 
     [HttpPut("{id:long}")]
@@ -110,6 +113,7 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
         entity.Name = name;
         entity.ParentId = dto.ParentId;
         entity.OrgType = string.IsNullOrWhiteSpace(dto.OrgType) ? null : dto.OrgType.Trim();
+        entity.IsActive = dto.IsActive;
 
         await db.SaveChangesAsync(ct);
         return NoContent();
@@ -123,11 +127,10 @@ public sealed class OrganizationsController(AppDbContext db, ITenantContext tena
         if (entity is null)
             return NotFound();
 
-        var hasChildren = await db.Organizations.AnyAsync(x => x.ParentId == id, ct);
-        if (hasChildren)
-            return Conflict("Remove or re-parent child organizations first.");
+        if (!entity.IsActive)
+            return NoContent();
 
-        db.Organizations.Remove(entity);
+        entity.IsActive = false;
         await db.SaveChangesAsync(ct);
         return NoContent();
     }

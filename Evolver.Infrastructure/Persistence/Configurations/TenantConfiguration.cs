@@ -10,6 +10,6 @@ internal sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
     {
         builder.HasIndex(x => x.Name)
             .IsUnique()
-            .HasFilter("IsDeleted = 0");
+            .HasFilter("IsActive = 1");
     }
 }

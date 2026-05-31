@@ -1,0 +1,28 @@
+.ev-app-breadcrumb-nav {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.ev-app-breadcrumb {
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ev-app-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    content: "/";
+}
+
+.ev-app-breadcrumb a {
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+
+.ev-app-breadcrumb a:hover {
+    color: var(--bs-primary);
+}
+
+.ev-app-breadcrumb .breadcrumb-item.active {
+    color: var(--bs-secondary-color);
+}

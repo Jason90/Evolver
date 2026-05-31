@@ -190,6 +190,30 @@
                 selectable: true,
                 initialSort: [{ column: "userName", dir: "asc" }]
             },
+            afterCreateTable: function (table) {
+                function wireRowDrag(row) {
+                    try {
+                        var el = row.getElement();
+                        var data = row.getData();
+                        if (!el || !data) return;
+                        el.setAttribute("draggable", "true");
+                        if (!el.__evUserDragWired) {
+                            el.addEventListener("dragstart", function () {
+                                if (window.evolverUi && typeof window.evolverUi.setDraggingUserId === "function") {
+                                    window.evolverUi.setDraggingUserId(Number(data.id));
+                                }
+                            });
+                            el.__evUserDragWired = true;
+                        }
+                    } catch (e) {
+                        console.warn("wire user row drag", e);
+                    }
+                }
+                table.getRows().forEach(wireRowDrag);
+                table.on("dataProcessed", function () {
+                    table.getRows().forEach(wireRowDrag);
+                });
+            },
             buildColumns: function (ctx) {
                 var dotNetRef = ctx.dotNetRef;
                 var uid = ctx.currentUserId != null ? Number(ctx.currentUserId) : null;
@@ -206,6 +230,7 @@
                     { title: "用户名", field: "userName", minWidth: 120, sorter: "string" },
                     { title: "Email", field: "email", minWidth: 160, sorter: "string" },
                     { title: "电话", field: "phoneNumber", minWidth: 110, sorter: "string" },
+                    { title: "归属部门", field: "departmentName", minWidth: 120, sorter: "string" },
                     { title: "角色", field: "rolesText", minWidth: 140, sorter: "string" },
                     {
                         title: "状态",
@@ -221,6 +246,9 @@
                             return "<span class=\"ev-user-status-pill ev-user-status--off\">停用</span>";
                         }
                     },
+                    { title: "更新日期", field: "updateTimeText", minWidth: 150, sorter: "string" },
+                    { title: "更新人", field: "updateByText", minWidth: 110, sorter: "string" },
+                    { title: "备注", field: "remark", minWidth: 140, sorter: "string" },
                     {
                         title: "操作",
                         field: "_op",
@@ -301,8 +329,12 @@
                         String(data.userName ?? ""),
                         String(data.email ?? ""),
                         String(data.phoneNumber ?? ""),
+                        String(data.departmentName ?? ""),
                         String(data.rolesText ?? ""),
-                        String(data.statusText ?? "")
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByText ?? ""),
+                        String(data.remark ?? "")
                     ]
                         .join(" ")
                         .toLowerCase();
@@ -313,6 +345,703 @@
                 filePrefix: "users",
                 sheetName: "Users",
                 pdfTitle: "用户列表"
+            }
+        },
+        products: {
+            tabulatorOptions: {
+                layout: "fitDataStretch",
+                placeholder: "暂无数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "code", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+
+                return [
+                    { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 42 },
+                    { title: "商品编号", field: "id", width: 90, sorter: "number", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "商品代码", field: "code", minWidth: 120, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "商品名称", field: "name", minWidth: 140, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "商品类型", field: "productTypeCode", minWidth: 120, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "单位编号", field: "unitCode", minWidth: 100, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "商品条码", field: "barcode", minWidth: 120, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "品牌", field: "brand", minWidth: 100, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "型号", field: "model", minWidth: 100, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "成本单价", field: "unitCostText", minWidth: 90, sorter: "string", hozAlign: "right", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "建议售价", field: "suggestedPriceText", minWidth: 90, sorter: "string", hozAlign: "right", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "理论库存", field: "theoreticalStockText", minWidth: 90, sorter: "string", hozAlign: "right", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "实际库存", field: "actualStockText", minWidth: 90, sorter: "string", hozAlign: "right", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "警戒库存", field: "alertStockText", minWidth: 90, sorter: "string", hozAlign: "right", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "备注", field: "remark", minWidth: 120, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 90, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 150, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 100, sorter: "string", formatter: function (c) { return strike(c.getValue(), c.getRow().getData()); } },
+                    {
+                        title: "操作",
+                        field: "_op",
+                        width: 140,
+                        frozen: true,
+                        hozAlign: "left",
+                        headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    if (!dotNetRef || btn.disabled) return;
+                                    handler();
+                                }, true);
+                            }
+
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnProductTableEdit", id).catch(function (err) { console.error(err); });
+                            });
+
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnProductTableDelete", id).catch(function (err) { console.error(err); });
+                            });
+
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) {
+                    table.clearFilter(true);
+                    return;
+                }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.id ?? ""),
+                        String(data.code ?? ""),
+                        String(data.name ?? ""),
+                        String(data.productTypeCode ?? ""),
+                        String(data.unitCode ?? ""),
+                        String(data.barcode ?? ""),
+                        String(data.brand ?? ""),
+                        String(data.model ?? ""),
+                        String(data.unitCostText ?? ""),
+                        String(data.suggestedPriceText ?? ""),
+                        String(data.theoreticalStockText ?? ""),
+                        String(data.actualStockText ?? ""),
+                        String(data.alertStockText ?? ""),
+                        String(data.remark ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "products",
+                sheetName: "Products",
+                pdfTitle: "商品信息"
+            }
+        },
+        units: {
+            tabulatorOptions: {
+                layout: "fitColumns",
+                placeholder: "暂无数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "code", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+
+                return [
+                    {
+                        formatter: "rowSelection",
+                        titleFormatter: "rowSelection",
+                        hozAlign: "center",
+                        headerSort: false,
+                        width: 42
+                    },
+                    {
+                        title: "单位编号",
+                        field: "code",
+                        minWidth: 140,
+                        sorter: "string",
+                        formatter: function (cell) {
+                            return strike(cell.getValue(), cell.getRow().getData());
+                        }
+                    },
+                    {
+                        title: "单位名称",
+                        field: "name",
+                        minWidth: 170,
+                        sorter: "string",
+                        formatter: function (cell) {
+                            return strike(cell.getValue(), cell.getRow().getData());
+                        }
+                    },
+                    {
+                        title: "是否激活",
+                        field: "statusText",
+                        width: 100,
+                        sorter: "string",
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var v = row.isActive ? "是" : "否";
+                            return strike(v, row);
+                        }
+                    },
+                    {
+                        title: "更新时间",
+                        field: "updateTimeText",
+                        minWidth: 170,
+                        sorter: "string",
+                        formatter: function (cell) {
+                            return strike(cell.getValue(), cell.getRow().getData());
+                        }
+                    },
+                    {
+                        title: "更新人",
+                        field: "updateByUserName",
+                        minWidth: 120,
+                        sorter: "string",
+                        formatter: function (cell) {
+                            return strike(cell.getValue(), cell.getRow().getData());
+                        }
+                    },
+                    {
+                        title: "操作",
+                        field: "_op",
+                        width: 140,
+                        hozAlign: "left",
+                        headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+
+                            function wireClick(btn, handler) {
+                                btn.addEventListener(
+                                    "click",
+                                    function (e) {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        if (!dotNetRef || btn.disabled) return;
+                                        handler();
+                                    },
+                                    true
+                                );
+                            }
+
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnUnitTableEdit", id).catch(function (err) {
+                                    console.error("OnUnitTableEdit", err);
+                                });
+                            });
+
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnUnitTableDelete", id).catch(function (err) {
+                                    console.error("OnUnitTableDelete", err);
+                                });
+                            });
+
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) {
+                    table.clearFilter(true);
+                    return;
+                }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.code ?? ""),
+                        String(data.name ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ]
+                        .join(" ")
+                        .toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "units",
+                sheetName: "Units",
+                pdfTitle: "单位列表"
+            }
+        },
+        customerCategories: {
+            tabulatorOptions: {
+                layout: "fitColumns",
+                placeholder: "暂无数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "categoryCode", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+                return [
+                    { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 42 },
+                    { title: "类别代码", field: "categoryCode", minWidth: 130, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "类别名称", field: "name", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "备注", field: "remark", minWidth: 200, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { var r = cell.getRow().getData(); return strike(r.isActive ? "是" : "否", r); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    {
+                        title: "操作", field: "_op", width: 140, hozAlign: "left", headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); if (!dotNetRef || btn.disabled) return; handler(); }, true);
+                            }
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () { dotNetRef.invokeMethodAsync("OnCustomerCategoryTableEdit", id).catch(function (err) { console.error(err); }); });
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () { dotNetRef.invokeMethodAsync("OnCustomerCategoryTableDelete", id).catch(function (err) { console.error(err); }); });
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) { table.clearFilter(true); return; }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.categoryCode ?? ""),
+                        String(data.name ?? ""),
+                        String(data.remark ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "customer_categories",
+                sheetName: "CustomerCategories",
+                pdfTitle: "客户类别"
+            }
+        },
+        customers: {
+            tabulatorOptions: {
+                layout: "fitDataStretch",
+                placeholder: "暂无客户数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "name", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+
+                return [
+                    { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 42 },
+                    { title: "客户类别", field: "customerCategoryName", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "姓名", field: "name", minWidth: 130, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "性别", field: "gender", width: 80, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "生日", field: "birthdayText", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "职务", field: "jobTitle", minWidth: 110, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "手机", field: "phone", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "电子邮箱", field: "email", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "备注", field: "remark", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { var r = cell.getRow().getData(); return strike(r.isActive ? "是" : "否", r); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    {
+                        title: "操作", field: "_op", width: 140, hozAlign: "left", headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); if (!dotNetRef || btn.disabled) return; handler(); }, true);
+                            }
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () { dotNetRef.invokeMethodAsync("OnCustomerTableEdit", id).catch(function (err) { console.error(err); }); });
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () { dotNetRef.invokeMethodAsync("OnCustomerTableDelete", id).catch(function (err) { console.error(err); }); });
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) { table.clearFilter(true); return; }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.customerCategoryName ?? ""),
+                        String(data.name ?? ""),
+                        String(data.gender ?? ""),
+                        String(data.birthdayText ?? ""),
+                        String(data.jobTitle ?? ""),
+                        String(data.phone ?? ""),
+                        String(data.email ?? ""),
+                        String(data.remark ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "customers",
+                sheetName: "Customers",
+                pdfTitle: "客户信息"
+            }
+        },
+        suppliers: {
+            tabulatorOptions: {
+                layout: "fitDataStretch",
+                placeholder: "暂无供应商数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "name", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+
+                return [
+                    { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 42 },
+                    { title: "供应商名称", field: "name", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "地址", field: "address", minWidth: 220, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "电话", field: "phone", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "网址", field: "website", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "备注", field: "remark", minWidth: 220, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { var r = cell.getRow().getData(); return strike(r.isActive ? "是" : "否", r); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    {
+                        title: "操作", field: "_op", width: 140, hozAlign: "left", headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); if (!dotNetRef || btn.disabled) return; handler(); }, true);
+                            }
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () { dotNetRef.invokeMethodAsync("OnSupplierTableEdit", id).catch(function (err) { console.error(err); }); });
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () { dotNetRef.invokeMethodAsync("OnSupplierTableDelete", id).catch(function (err) { console.error(err); }); });
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) { table.clearFilter(true); return; }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.name ?? ""),
+                        String(data.address ?? ""),
+                        String(data.phone ?? ""),
+                        String(data.website ?? ""),
+                        String(data.remark ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "suppliers",
+                sheetName: "Suppliers",
+                pdfTitle: "供应商信息"
+            }
+        },
+        markets: {
+            tabulatorOptions: {
+                layout: "fitDataStretch",
+                placeholder: "暂无市场数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "name", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+
+                return [
+                    { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 42 },
+                    { title: "市场名称", field: "name", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "租金", field: "rentAmountText", minWidth: 120, sorter: "string", hozAlign: "right", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "地址", field: "address", minWidth: 220, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "电话", field: "phone", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "网址", field: "website", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "备注", field: "remark", minWidth: 220, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { var r = cell.getRow().getData(); return strike(r.isActive ? "是" : "否", r); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    {
+                        title: "操作", field: "_op", width: 140, hozAlign: "left", headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); if (!dotNetRef || btn.disabled) return; handler(); }, true);
+                            }
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () { dotNetRef.invokeMethodAsync("OnMarketTableEdit", id).catch(function (err) { console.error(err); }); });
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () { dotNetRef.invokeMethodAsync("OnMarketTableDelete", id).catch(function (err) { console.error(err); }); });
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) { table.clearFilter(true); return; }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.name ?? ""),
+                        String(data.rentAmountText ?? ""),
+                        String(data.address ?? ""),
+                        String(data.phone ?? ""),
+                        String(data.website ?? ""),
+                        String(data.remark ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "markets",
+                sheetName: "Markets",
+                pdfTitle: "市场管理"
+            }
+        },
+        parameters: {
+            tabulatorOptions: {
+                layout: "fitDataStretch",
+                placeholder: "暂无参数数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: true,
+                paginationSize: 10,
+                paginationSizeSelector: [10, 15, 25, 50, 100],
+                paginationCounter: "rows",
+                selectable: true,
+                initialSort: [{ column: "paramKey", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+                return [
+                    { formatter: "rowSelection", titleFormatter: "rowSelection", hozAlign: "center", headerSort: false, width: 42 },
+                    { title: "参数名称", field: "name", minWidth: 160, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "参数键名", field: "paramKey", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "参数值", field: "paramValue", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "系统内置", field: "builtInText", width: 100, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "备注", field: "remark", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { var r = cell.getRow().getData(); return strike(r.isActive ? "是" : "否", r); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    {
+                        title: "操作", field: "_op", width: 140, hozAlign: "left", headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) { e.stopPropagation(); e.preventDefault(); if (!dotNetRef || btn.disabled) return; handler(); }, true);
+                            }
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () { dotNetRef.invokeMethodAsync("OnParameterTableEdit", id).catch(function (err) { console.error(err); }); });
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () { dotNetRef.invokeMethodAsync("OnParameterTableDelete", id).catch(function (err) { console.error(err); }); });
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) { table.clearFilter(true); return; }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.name ?? ""),
+                        String(data.paramKey ?? ""),
+                        String(data.paramValue ?? ""),
+                        String(data.builtInText ?? ""),
+                        String(data.remark ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "system_parameters",
+                sheetName: "Parameters",
+                pdfTitle: "参数设置"
             }
         },
         tenants: {
@@ -329,6 +1058,20 @@
             },
             buildColumns: function (ctx) {
                 var dotNetRef = ctx.dotNetRef;
+                function statusChip(row) {
+                    var txt = String(row.statusText || "");
+                    if (row.statusText === "正常") {
+                        return "<span class=\"ev-user-status-pill ev-user-status--ok\">" + txt + "</span>";
+                    }
+                    return "<span class=\"ev-user-status-pill ev-user-status--off\">" + txt + "</span>";
+                }
+                function strike(v, row) {
+                    var text = String(v == null ? "" : v);
+                    if (row && row.statusText !== "正常") {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
 
                 return [
                     {
@@ -338,11 +1081,16 @@
                         headerSort: false,
                         width: 42
                     },
-                    { title: "租户 Id", field: "id", width: 90, sorter: "number" },
-                    { title: "租户名称", field: "name", minWidth: 140, sorter: "string" },
+                    { title: "租户 ID", field: "tenantId", width: 90, sorter: "number", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "租户名称", field: "tenantName", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
                     { title: "根组织名称", field: "rootOrgName", minWidth: 120, sorter: "string" },
+                    { title: "创建时间", field: "createTimeText", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "到期时间", field: "expireAtText", minWidth: 140, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "状态", field: "statusText", width: 90, cssClass: "ev-user-status-col", sorter: "string", formatter: function (cell) { return statusChip(cell.getRow().getData()); } },
                     { title: "管理员用户名", field: "adminUserName", minWidth: 120, sorter: "string" },
                     { title: "管理员邮箱", field: "adminEmail", minWidth: 160, sorter: "string" },
+                    { title: "备注", field: "remark", minWidth: 160, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
                     {
                         title: "操作",
                         field: "_op",
@@ -351,8 +1099,8 @@
                         headerSort: false,
                         formatter: function (cell) {
                             var row = cell.getRow().getData();
-                            var id = Number(row.id);
-                            var name = row.name || "";
+                            var id = Number(row.tenantId);
+                            var name = row.tenantName || "";
                             var canDelete = row.canDelete !== false;
 
                             var wrap = document.createElement("div");
@@ -408,11 +1156,16 @@
                 }
                 table.setFilter(function (data) {
                     var hay = [
-                        String(data.id ?? ""),
-                        String(data.name ?? ""),
+                        String(data.tenantId ?? ""),
+                        String(data.tenantName ?? ""),
                         String(data.rootOrgName ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.createTimeText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.expireAtText ?? ""),
                         String(data.adminUserName ?? ""),
-                        String(data.adminEmail ?? "")
+                        String(data.adminEmail ?? ""),
+                        String(data.remark ?? "")
                     ]
                         .join(" ")
                         .toLowerCase();
@@ -539,21 +1292,57 @@
             }
         },
         organizations: {
+            revision: 3,
             tabulatorOptions: {
                 layout: "fitColumns",
                 placeholder: "暂无组织数据",
                 maxHeight: "calc(100vh - 220px)",
                 pagination: false,
+                autoColumns: false,
                 dataTree: true,
                 dataTreeChildField: "_children",
                 dataTreeElementColumn: "name",
                 dataTreeStartExpanded: true,
                 dataTreeChildIndent: 20,
                 selectable: false,
-                initialSort: [{ column: "id", dir: "asc" }]
+                movableRows: true,
+                initialSort: [{ column: "name", dir: "asc" }]
+            },
+            afterCreateTable: function (table, ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                if (!dotNetRef) return;
+                var ignoreRowMoved = true;
+                setTimeout(function () {
+                    ignoreRowMoved = false;
+                }, 400);
+                table.on("rowMoved", function (row) {
+                    if (ignoreRowMoved) return;
+                    try {
+                        var data = row.getData();
+                        var id = Number(data.id);
+                        var parentRow = row.getTreeParent();
+                        var newParentId = parentRow ? Number(parentRow.getData().id) : null;
+                        var prevRow = typeof row.getPrevRow === "function" ? row.getPrevRow() : null;
+                        var dropTargetId = prevRow ? Number(prevRow.getData().id) : null;
+                        dotNetRef
+                            .invokeMethodAsync("OnOrgTableMoved", id, newParentId, dropTargetId)
+                            .catch(function (err) {
+                                console.error("OnOrgTableMoved", err);
+                            });
+                    } catch (e) {
+                        console.error("organizations rowMoved", e);
+                    }
+                });
             },
             buildColumns: function (ctx) {
                 var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
 
                 return [
                     {
@@ -561,14 +1350,15 @@
                         field: "name",
                         minWidth: 220,
                         headerSort: false,
-                        widthGrow: 2
+                        widthGrow: 2,
+                        formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); }
                     },
-                    { title: "类型", field: "orgType", minWidth: 100, sorter: "string" },
-                    { title: "Id", field: "id", width: 90, sorter: "number" },
+                    { title: "状态", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "修改时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
                     {
                         title: "操作",
                         field: "_op",
-                        width: 220,
+                        width: 200,
                         hozAlign: "left",
                         headerSort: false,
                         formatter: function (cell) {
@@ -596,7 +1386,7 @@
                             var editBtn = document.createElement("button");
                             editBtn.type = "button";
                             editBtn.className = "btn btn-outline-primary";
-                            editBtn.textContent = "编辑";
+                            editBtn.textContent = "修改";
                             wireClick(editBtn, function () {
                                 dotNetRef.invokeMethodAsync("OnOrgTableEdit", id).catch(function (err) {
                                     console.error("OnOrgTableEdit", err);
@@ -606,7 +1396,7 @@
                             var addBtn = document.createElement("button");
                             addBtn.type = "button";
                             addBtn.className = "btn btn-outline-secondary";
-                            addBtn.textContent = "新增子级";
+                            addBtn.textContent = "新增";
                             wireClick(addBtn, function () {
                                 dotNetRef.invokeMethodAsync("OnOrgTableAddChild", id, name).catch(function (err) {
                                     console.error("OnOrgTableAddChild", err);
@@ -638,7 +1428,11 @@
                     return;
                 }
                 table.setFilter(function (data) {
-                    var hay = [String(data.id ?? ""), String(data.name ?? ""), String(data.orgType ?? "")]
+                    var hay = [
+                        String(data.name ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? "")
+                    ]
                         .join(" ")
                         .toLowerCase();
                     return hay.indexOf(t) !== -1;
@@ -649,8 +1443,210 @@
                 sheetName: "Organizations",
                 pdfTitle: "组织架构"
             }
+        },
+        productCategories: {
+            tabulatorOptions: {
+                layout: "fitColumns",
+                placeholder: "暂无商品类别数据",
+                maxHeight: "calc(100vh - 220px)",
+                pagination: false,
+                dataTree: true,
+                dataTreeChildField: "_children",
+                dataTreeElementColumn: "name",
+                dataTreeStartExpanded: true,
+                dataTreeChildIndent: 20,
+                selectable: false,
+                initialSort: [{ column: "code", dir: "asc" }]
+            },
+            buildColumns: function (ctx) {
+                var dotNetRef = ctx.dotNetRef;
+                function strike(v, rowData) {
+                    var text = String(v == null ? "" : v);
+                    if (rowData && rowData.isActive === false) {
+                        return "<span class=\"text-decoration-line-through text-muted\">" + text + "</span>";
+                    }
+                    return text;
+                }
+
+                return [
+                    { title: "类别编号", field: "code", minWidth: 130, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "类别名称", field: "name", minWidth: 180, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "是否激活", field: "statusText", width: 100, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新时间", field: "updateTimeText", minWidth: 170, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    { title: "更新人", field: "updateByUserName", minWidth: 120, sorter: "string", formatter: function (cell) { return strike(cell.getValue(), cell.getRow().getData()); } },
+                    {
+                        title: "操作",
+                        field: "_op",
+                        width: 220,
+                        hozAlign: "left",
+                        headerSort: false,
+                        formatter: function (cell) {
+                            var row = cell.getRow().getData();
+                            var id = Number(row.id);
+                            var name = row.name || "";
+
+                            var wrap = document.createElement("div");
+                            wrap.className = "btn-group btn-group-sm";
+                            wrap.setAttribute("role", "group");
+
+                            function wireClick(btn, handler) {
+                                btn.addEventListener("click", function (e) {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    if (!dotNetRef || btn.disabled) return;
+                                    handler();
+                                }, true);
+                            }
+
+                            var editBtn = document.createElement("button");
+                            editBtn.type = "button";
+                            editBtn.className = "btn btn-outline-primary";
+                            editBtn.textContent = "编辑";
+                            wireClick(editBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnProductCategoryTableEdit", id).catch(function (err) { console.error(err); });
+                            });
+
+                            var addBtn = document.createElement("button");
+                            addBtn.type = "button";
+                            addBtn.className = "btn btn-outline-secondary";
+                            addBtn.textContent = "新增子级";
+                            wireClick(addBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnProductCategoryTableAddChild", id, name).catch(function (err) { console.error(err); });
+                            });
+
+                            var delBtn = document.createElement("button");
+                            delBtn.type = "button";
+                            delBtn.className = "btn btn-outline-danger";
+                            delBtn.textContent = "删除";
+                            wireClick(delBtn, function () {
+                                dotNetRef.invokeMethodAsync("OnProductCategoryTableDelete", id, name).catch(function (err) { console.error(err); });
+                            });
+
+                            wrap.appendChild(editBtn);
+                            wrap.appendChild(addBtn);
+                            wrap.appendChild(delBtn);
+                            return wrap;
+                        }
+                    }
+                ];
+            },
+            applyGlobalFilter: function (table, text) {
+                var t = (text || "").trim().toLowerCase();
+                if (!t) {
+                    table.clearFilter(true);
+                    return;
+                }
+                table.setFilter(function (data) {
+                    var hay = [
+                        String(data.code ?? ""),
+                        String(data.name ?? ""),
+                        String(data.statusText ?? ""),
+                        String(data.updateTimeText ?? ""),
+                        String(data.updateByUserName ?? "")
+                    ].join(" ").toLowerCase();
+                    return hay.indexOf(t) !== -1;
+                });
+            },
+            download: {
+                filePrefix: "product_categories",
+                sheetName: "ProductCategories",
+                pdfTitle: "商品类别"
+            }
         }
     };
+
+    function columnVisibilityStorageKey(schemaKey, userId) {
+        var uid = userId != null && userId !== "" ? String(userId) : "anon";
+        return "evolver.colvis." + schemaKey + "." + uid;
+    }
+
+    function loadColumnVisibility(schemaKey, userId) {
+        try {
+            var raw = localStorage.getItem(columnVisibilityStorageKey(schemaKey, userId));
+            if (!raw) return {};
+            var parsed = JSON.parse(raw);
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveColumnVisibility(schemaKey, userId, map) {
+        try {
+            localStorage.setItem(columnVisibilityStorageKey(schemaKey, userId), JSON.stringify(map || {}));
+        } catch (e) {
+            console.warn("saveColumnVisibility", e);
+        }
+    }
+
+    function isToggleableColumnDef(col) {
+        if (!col || !col.field || col.field === "_op") return false;
+        if (col.formatter === "rowSelection" || col.titleFormatter === "rowSelection") return false;
+        return true;
+    }
+
+    function applyStoredColumnVisibility(cols, schemaKey, userId) {
+        if (!cols || !cols.length) return cols;
+        var stored = loadColumnVisibility(schemaKey, userId);
+        return cols.map(function (col) {
+            if (!isToggleableColumnDef(col)) return col;
+            if (stored[col.field] === false) {
+                return Object.assign({}, col, { visible: false });
+            }
+            return col;
+        });
+    }
+
+    function columnIsVisible(col) {
+        if (!col) return true;
+        try {
+            if (typeof col.isVisible === "function") return !!col.isVisible();
+            if (typeof col.getVisibility === "function") return !!col.getVisibility();
+            var def = col.getDefinition && col.getDefinition();
+            return !(def && def.visible === false);
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function buildToggleableColumnList(hostId, schemaKey) {
+        schemaKey = schemaKey || (getInst(hostId) && getInst(hostId).schemaKey) || "users";
+        var def = schemas[schemaKey];
+        if (!def || typeof def.buildColumns !== "function") return [];
+
+        var inst = getInst(hostId);
+        var ctx = {
+            hostId: hostId,
+            dotNetRef: inst && inst.dotNetRef,
+            currentUserId: inst && inst.currentUserId
+        };
+        var colDefs = def.buildColumns(ctx);
+        var stored = loadColumnVisibility(schemaKey, ctx.currentUserId);
+        var visibilityByField = Object.create(null);
+
+        if (inst && inst.table && isTableUsable(inst.table)) {
+            try {
+                inst.table.getColumns().forEach(function (col) {
+                    var d = col.getDefinition();
+                    if (!isToggleableColumnDef(d)) return;
+                    visibilityByField[d.field] = columnIsVisible(col);
+                });
+            } catch (e) {
+                console.warn("buildToggleableColumnList", e);
+            }
+        }
+
+        return colDefs.filter(isToggleableColumnDef).map(function (colDef) {
+            var field = colDef.field;
+            var visible = visibilityByField[field];
+            if (visible === undefined) visible = stored[field] !== false;
+            return {
+                field: field,
+                title: colDef.title || field,
+                visible: !!visible
+            };
+        });
+    }
 
     function createTable(hostId, el, rows, dnRef, schemaKey, currentUserId) {
         var def = schemas[schemaKey];
@@ -660,7 +1656,7 @@
         }
 
         var ctx = { hostId: hostId, dotNetRef: dnRef, currentUserId: currentUserId };
-        var cols = def.buildColumns(ctx);
+        var cols = applyStoredColumnVisibility(def.buildColumns(ctx), schemaKey, currentUserId);
         var opts = Object.assign({}, def.tabulatorOptions, {
             data: rows,
             columns: cols
@@ -668,17 +1664,32 @@
 
         var tab = new Tabulator(el, opts);
 
+        if (typeof def.afterCreateTable === "function") {
+            def.afterCreateTable(tab, ctx);
+        }
+
         instances[hostId] = {
             table: tab,
             hostEl: el,
             dotNetRef: dnRef,
             schemaKey: schemaKey,
+            schemaRevision: def.revision || 0,
             currentUserId: currentUserId,
             resizeObserver: null,
             _onWinResize: null
         };
 
         attachWindowResizeRedraw(hostId);
+    }
+
+    function isTableUsable(table) {
+        if (!table) return false;
+        try {
+            // Tabulator destroyed/half-destroyed instances can keep an object but lose modules.
+            return !!(table.modules && table.modules.rowManager);
+        } catch (e) {
+            return false;
+        }
     }
 
     window.evolverDataTable = {
@@ -692,7 +1703,7 @@
             var el = typeof hostId === "string" ? document.getElementById(hostId) : hostId;
             if (!el) {
                 console.warn("evolverDataTable: host not found", hostId);
-                return;
+                return false;
             }
 
             schemaKey = schemaKey || "users";
@@ -702,27 +1713,43 @@
                 rows = typeof json === "string" ? JSON.parse(json) : json;
             } catch (e) {
                 console.error(e);
-                return;
+                return false;
             }
+
+            var def = schemas[schemaKey];
+            var schemaRevision = def && def.revision ? def.revision : 0;
 
             var inst = getInst(hostId);
             if (!inst) {
                 createTable(hostId, el, rows, dnRef, schemaKey, currentUserId);
-                return;
+                return true;
             }
             if (inst.hostEl !== el) {
                 window.evolverDataTable.destroy(hostId);
                 createTable(hostId, el, rows, dnRef, schemaKey, currentUserId);
-                return;
+                return true;
             }
 
             inst.dotNetRef = dnRef;
             inst.currentUserId = currentUserId;
             inst.schemaKey = schemaKey;
-            inst.table.replaceData(rows);
+            if (!isTableUsable(inst.table) || inst.schemaRevision !== schemaRevision) {
+                window.evolverDataTable.destroy(hostId);
+                createTable(hostId, el, rows, dnRef, schemaKey, currentUserId);
+                return true;
+            }
+            try {
+                inst.table.replaceData(rows);
+            } catch (e) {
+                console.warn("evolverDataTable sync replaceData failed, rebuilding", e);
+                window.evolverDataTable.destroy(hostId);
+                createTable(hostId, el, rows, dnRef, schemaKey, currentUserId);
+                return true;
+            }
             requestAnimationFrame(function () {
                 redrawTable(hostId);
             });
+            return true;
         },
 
         setGlobalFilter: function (hostId, text) {
@@ -739,7 +1766,12 @@
             disconnectHostResizeObserver(inst);
             detachWindowResizeRedraw(inst);
             if (inst.table) {
-                inst.table.destroy();
+                try {
+                    inst.table.destroy();
+                } catch (e) {
+                    console.warn("evolverDataTable destroy", e);
+                }
+                inst.table = null;
             }
             delete instances[hostId];
         },
@@ -789,6 +1821,41 @@
                         alert("导出 PDF 失败：" + (e && e.message ? e.message : String(e)));
                     });
             }
+        },
+
+        getToggleableColumns: function (hostId, schemaKey) {
+            return buildToggleableColumnList(hostId, schemaKey);
+        },
+
+        setColumnVisible: function (hostId, field, visible) {
+            var inst = getInst(hostId);
+            if (!inst || !inst.table || !field) return false;
+            try {
+                if (visible) inst.table.showColumn(field);
+                else inst.table.hideColumn(field);
+                var map = loadColumnVisibility(inst.schemaKey, inst.currentUserId);
+                map[field] = !!visible;
+                saveColumnVisibility(inst.schemaKey, inst.currentUserId, map);
+                return true;
+            } catch (e) {
+                console.warn("setColumnVisible", e);
+                return false;
+            }
+        },
+
+        setAllColumnsVisible: function (hostId, visible) {
+            var inst = getInst(hostId);
+            if (!inst || !inst.table) return [];
+            var map = loadColumnVisibility(inst.schemaKey, inst.currentUserId);
+            inst.table.getColumns().forEach(function (col) {
+                var def = col.getDefinition();
+                if (!isToggleableColumnDef(def)) return;
+                if (visible) inst.table.showColumn(def.field);
+                else inst.table.hideColumn(def.field);
+                map[def.field] = !!visible;
+            });
+            saveColumnVisibility(inst.schemaKey, inst.currentUserId, map);
+            return buildToggleableColumnList(hostId, inst.schemaKey);
         },
 
         expandTreeAll: function (hostId) {

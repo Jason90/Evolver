@@ -1,6 +1,409 @@
 @page "/orders"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
 
 <PageTitle>销售订单</PageTitle>
+<h1 class="mb-2">销售单（点餐/下单入口）</h1>
 
-<ComingSoonPanel Title="订单管理（2.6）"
-                 Description="订单状态机（待生产→生产中→待发货→完成）、任务指派、操作日志、结算信息等。" />
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">新建销售单</div>
+    <div class="card-body">
+        <div class="row g-2 mb-2">
+            <div class="col-md-3"><input class="form-control" placeholder="市场名" @bind="_market" /></div>
+            <div class="col-md-3"><input class="form-control" placeholder="客户名" @bind="_customer" /></div>
+            <div class="col-md-3"><input class="form-control" placeholder="销售员用户名(可空)" @bind="_salesUser" /></div>
+            <div class="col-md-3 form-check mt-2"><input class="form-check-input" type="checkbox" @bind="_checkoutNow" id="checkoutNow" /><label class="form-check-label" for="checkoutNow">直接结账</label></div>
+        </div>
+        <div class="table-responsive mb-2">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="min-width:160px">商品代码</th>
+                        <th>商品名称</th>
+                        <th>成本单价</th>
+                        <th>建议售价</th>
+                        <th>数量</th>
+                        <th>折%</th>
+                        <th>单价</th>
+                        <th>金额</th>
+                        <th>备注</th>
+                        <th style="width:60px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _editLines)
+                    {
+                        <tr>
+                            <td>
+                                <select class="form-select form-select-sm" @bind="line.ProductId" @bind:after="async () => await OnLineProductChangedAsync(line)">
+                                    <option value="">-- 选择商品 --</option>
+                                    @foreach (var p in _finishedProducts)
+                                    {
+                                        <option value="@p.ProductId">@p.ProductCode</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>@line.ProductName</td>
+                            <td>@FormatAmount(line.UnitCost)</td>
+                            <td>@FormatAmount(line.SuggestedPrice)</td>
+                            <td><input type="number" step="@_amountStep" class="form-control form-control-sm" @bind="line.Quantity" @bind:event="oninput" @bind:after="() => OnLineQuantityChanged(line)" /></td>
+                            <td><input type="number" step="0.01" class="form-control form-control-sm" @bind="line.DiscountRate" @bind:event="oninput" @bind:after="() => OnLineDiscountChanged(line)" /></td>
+                            <td><input type="number" step="@_amountStep" class="form-control form-control-sm" @bind="line.UnitPrice" @bind:event="oninput" @bind:after="() => OnLineUnitPriceChanged(line)" /></td>
+                            <td>@FormatAmount(line.Amount)</td>
+                            <td><input class="form-control form-control-sm" @bind="line.Remark" @bind:event="oninput" /></td>
+                            <td><button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveLine(line)">删</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="AddLine" disabled="@_busy">新增明细行</button>
+            <button class="btn btn-outline-secondary me-2" @onclick="SimulateShortageAsync" disabled="@_busy">下单前试算缺口</button>
+            <button class="btn btn-primary" @onclick="CreateAsync" disabled="@_busy">提交销售单</button>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_result))
+{
+    <div class="alert alert-success">@_result</div>
+}
+@if (_lastShortages.Count > 0)
+{
+    <div class="alert alert-warning">
+        当前单据存在原料缺口，可一键转采购建议。
+        <button class="btn btn-sm btn-outline-dark ms-2" @onclick="CreatePurchaseFromShortagesAsync" disabled="@_busy">生成采购单</button>
+    </div>
+    <div class="table-responsive mb-3">
+        <table class="table table-sm table-bordered">
+            <thead><tr><th>原料</th><th>需求</th><th>可用</th><th>缺口</th></tr></thead>
+            <tbody>
+                @foreach (var s in _lastShortages)
+                {
+                    <tr>
+                        <td>@s.ProductCode - @s.ProductName</td>
+                        <td>@s.RequiredQty</td>
+                        <td>@s.AvailableQty</td>
+                        <td class="text-danger">@s.ShortageQty</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<button class="btn btn-outline-secondary btn-sm mb-2" @onclick="LoadAsync" disabled="@_busy">刷新列表</button>
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead><tr><th>订单号</th><th>客户姓名</th><th>订单状态</th><th>订单日期</th><th>销售员</th><th>收款状态</th><th>总数量</th><th>总金额</th><th>实收款</th><th>备注</th><th>更新人</th><th>更新日期</th><th>流程</th></tr></thead>
+        <tbody>
+            @foreach (var r in _rows)
+            {
+                <tr class="@GetRowClass(r.Id)" style="cursor:pointer" @onclick="() => SelectOrderAsync(r.Id)">
+                    <td>@r.OrderNo</td>
+                    <td>@r.CustomerName</td>
+                    <td>@r.OrderStatus</td>
+                    <td>@r.OrderDate</td>
+                    <td>@r.SalesUserName</td>
+                    <td>@r.PaymentStatus</td>
+                    <td>@r.TotalQuantity</td>
+                    <td>@r.TotalAmount</td>
+                    <td>@r.ReceivedAmount</td>
+                    <td>@r.Notes</td>
+                    <td>@r.UpdateByUserName</td>
+                    <td>@(r.UpdateTime?.ToLocalTime().ToString("yyyy-MM-dd") ?? "-")</td>
+                    <td>
+                        <button class="btn btn-outline-secondary btn-sm me-1" @onclick='@(() => ChangeStatusAsync(r.Id, "InProduction"))'>生产中</button>
+                        <button class="btn btn-outline-info btn-sm me-1" @onclick='@(() => ChangeStatusAsync(r.Id, "PendingDispatch"))'>待发货</button>
+                        <button class="btn btn-outline-success btn-sm me-1" @onclick='@(() => ChangeStatusAsync(r.Id, "Completed"))'>完成</button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick='@(() => ChangeStatusAsync(r.Id, "Cancelled"))'>取消</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">订单商品明细</div>
+    <div class="card-body">
+        @if (_selectedOrder is null)
+        {
+            <div class="text-muted">请选择上方订单查看明细。</div>
+        }
+        else
+        {
+            <div class="mb-2">
+                <strong>订单号：</strong>@_selectedOrder.OrderNo
+                <span class="ms-3"><strong>客户：</strong>@_selectedOrder.CustomerName</span>
+                <span class="ms-3"><strong>状态：</strong>@_selectedOrder.OrderStatus</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>商品代码</th><th>商品名称</th><th>成本单价</th><th>建议售价</th><th>数量</th><th>折%</th><th>单价</th><th>金额</th><th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in _selectedOrder.Lines)
+                        {
+                            <tr>
+                                <td>@l.ProductCode</td>
+                                <td>@l.ProductName</td>
+                                <td>@FormatAmount(l.UnitCost ?? 0m)</td>
+                                <td>@FormatAmount(l.SuggestedPrice ?? 0m)</td>
+                                <td>@FormatAmount(l.Quantity)</td>
+                                <td>@l.DiscountRate</td>
+                                <td>@FormatAmount(l.UnitPrice)</td>
+                                <td>@FormatAmount(l.Amount)</td>
+                                <td>@l.Remark</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private sealed class OrderLineInput
+    {
+        public long? ProductId { get; set; }
+        public string ProductCode { get; set; } = "";
+        public string ProductName { get; set; } = "";
+        public decimal UnitCost { get; set; }
+        public decimal SuggestedPrice { get; set; }
+        public decimal Quantity { get; set; } = 1;
+        public decimal DiscountRate { get; set; } = 100m;
+        public decimal UnitPrice { get; set; }
+        public decimal Amount { get; set; }
+        public string? Remark { get; set; }
+    }
+
+    private bool _busy;
+    private string _market = "默认市场";
+    private string _customer = "散客";
+    private string? _salesUser;
+    private bool _checkoutNow = true;
+    private string? _result;
+    private string? _error;
+    private List<MaterialShortageDto> _lastShortages = new();
+    private List<SalesOrderSummaryDto> _rows = new();
+    private List<SalesOrderProductOptionDto> _finishedProducts = new();
+    private List<OrderLineInput> _editLines = new();
+    private long? _selectedOrderId;
+    private SalesOrderDetailDto? _selectedOrder;
+    private int _amountDecimalPlaces = 4;
+    private string _amountStep = "0.0001";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAmountScaleAsync();
+        await LoadFinishedProductsAsync();
+        AddLine();
+        await LoadAsync();
+    }
+
+    private async Task LoadAmountScaleAsync()
+    {
+        var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<SalesOrderAmountScaleDto>>("api/business/sales-orders/amount-scale");
+        var value = env?.Success == true ? env.Data?.AmountDecimalPlaces : null;
+        _amountDecimalPlaces = value is null ? 4 : Math.Clamp(value.Value, 0, 8);
+        _amountStep = _amountDecimalPlaces <= 0 ? "1" : $"0.{new string('0', _amountDecimalPlaces - 1)}1";
+    }
+
+    private async Task LoadFinishedProductsAsync()
+    {
+        var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<SalesOrderProductOptionDto>>>("api/business/sales-orders/finished-products");
+        _finishedProducts = env?.Success == true ? env.Data ?? new() : new();
+    }
+
+    private void AddLine() => _editLines.Add(new OrderLineInput());
+    private void RemoveLine(OrderLineInput line)
+    {
+        _editLines.Remove(line);
+        if (_editLines.Count == 0) AddLine();
+    }
+
+    private async Task OnLineProductChangedAsync(OrderLineInput line)
+    {
+        if (line.ProductId is null) return;
+        var p = _finishedProducts.FirstOrDefault(x => x.ProductId == line.ProductId.Value);
+        if (p is null) return;
+        line.ProductCode = p.ProductCode;
+        line.ProductName = p.ProductName;
+        line.UnitCost = RoundAmount(p.UnitCost ?? 0m);
+        line.SuggestedPrice = RoundAmount(p.SuggestedPrice ?? 0m);
+        line.Quantity = 1m;
+        line.DiscountRate = 100m;
+        line.UnitPrice = line.SuggestedPrice;
+        RecalculateAmount(line);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string FormatAmount(decimal value) => RoundAmount(value).ToString($"F{_amountDecimalPlaces}");
+
+    private decimal RoundAmount(decimal value) => Math.Round(value, _amountDecimalPlaces, MidpointRounding.AwayFromZero);
+
+    private void OnLineDiscountChanged(OrderLineInput line)
+    {
+        var factor = Math.Max(0m, line.DiscountRate) / 100m;
+        line.UnitPrice = RoundAmount(line.SuggestedPrice * factor);
+        RecalculateAmount(line);
+    }
+
+    private void OnLineUnitPriceChanged(OrderLineInput line)
+    {
+        line.UnitPrice = RoundAmount(line.UnitPrice);
+        if (line.SuggestedPrice > 0)
+            line.DiscountRate = Math.Round((line.UnitPrice / line.SuggestedPrice) * 100m, 2, MidpointRounding.AwayFromZero);
+        RecalculateAmount(line);
+    }
+
+    private void OnLineQuantityChanged(OrderLineInput line)
+    {
+        line.Quantity = RoundAmount(Math.Max(0m, line.Quantity));
+        RecalculateAmount(line);
+    }
+
+    private void RecalculateAmount(OrderLineInput line)
+    {
+        line.Amount = RoundAmount(line.Quantity * line.UnitPrice);
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        try
+        {
+            _error = null;
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<SalesOrderSummaryDto>>>("api/business/sales-orders");
+            _rows = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false) _error = env.Message;
+            if (_selectedOrderId is not null)
+                await SelectOrderAsync(_selectedOrderId.Value);
+        }
+        catch (Exception ex) { _error = ex.Message; _rows = new(); }
+        finally { _busy = false; }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _result = null;
+        _error = null;
+        _lastShortages.Clear();
+        try
+        {
+            var lines = _editLines
+                .Where(x => x.ProductId is not null && x.Quantity > 0)
+                .Select(x => new SalesOrderCreateLineDto(x.ProductId!.Value, x.Quantity, x.UnitPrice > 0 ? x.UnitPrice : x.SuggestedPrice))
+                .ToList();
+            var resp = await Http.PostAsJsonAsync("api/business/sales-orders", new SalesOrderCreateRequestDto(_market, _customer, _salesUser, _checkoutNow, true, null, lines));
+            var text = await resp.Content.ReadAsStringAsync();
+            var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<SalesOrderResultDto>>(text, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (env?.Success == false) { _error = env.Message ?? text; return; }
+            if (env?.Success == true && env.Data is not null)
+            {
+                _result = $"销售单 {env.Data.SalesOrderNo} 已创建，状态 {env.Data.Status}" + (env.Data.ProductionOrderNo is null ? "" : $"；自动生产单 {env.Data.ProductionOrderNo}");
+                if (env.Data.MaterialShortages.Count > 0)
+                    _result += $"；但存在 {env.Data.MaterialShortages.Count} 项原料缺口";
+                _lastShortages = env.Data.MaterialShortages.ToList();
+                _selectedOrderId = env.Data.SalesOrderId;
+            }
+            _editLines.Clear();
+            AddLine();
+            await LoadAsync();
+            if (_selectedOrderId is not null)
+                await SelectOrderAsync(_selectedOrderId.Value);
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SimulateShortageAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _lastShortages.Clear();
+        try
+        {
+            _error = null;
+            var lines = _editLines
+                .Where(x => x.ProductId is not null && x.Quantity > 0)
+                .Select(x => new SalesOrderCreateLineDto(x.ProductId!.Value, x.Quantity, x.UnitPrice > 0 ? x.UnitPrice : x.SuggestedPrice))
+                .ToList();
+            var req = new SalesOrderCreateRequestDto(_market, _customer, _salesUser, _checkoutNow, true, null, lines);
+            var resp = await Http.PostAsJsonAsync("api/business/sales-orders/simulate-material-check", req);
+            var text = await resp.Content.ReadAsStringAsync();
+            var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<List<MaterialShortageDto>>>(text, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _lastShortages = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false) _error = env.Message ?? text;
+            _result = _lastShortages.Count == 0 ? "试算通过：原料库存充足。" : $"试算完成：存在 {_lastShortages.Count} 项缺口。";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task SelectOrderAsync(long id)
+    {
+        _selectedOrderId = id;
+        var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<SalesOrderDetailDto>>($"api/business/sales-orders/{id}");
+        _selectedOrder = env?.Success == true ? env.Data : null;
+    }
+
+    private string GetRowClass(long id) => _selectedOrderId == id ? "table-primary" : "";
+
+    private async Task CreatePurchaseFromShortagesAsync()
+    {
+        if (_busy || _lastShortages.Count == 0) return;
+        _busy = true;
+        try
+        {
+            _error = null;
+            var lines = _lastShortages.Select(x => new PurchaseSuggestionLineDto(
+                x.ProductId,
+                x.ProductCode,
+                x.ProductName,
+                x.AvailableQty,
+                x.RequiredQty,
+                x.ShortageQty,
+                x.UnitCost)).ToList();
+            await Http.PostAsJsonAsync("api/business/purchase-orders", new PurchaseOrderCreateRequestDto(null, null, lines));
+            _result = "缺口已转采购单。";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ChangeStatusAsync(long id, string toStatus)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            _error = null;
+            var resp = await Http.PostAsync($"api/business/sales-orders/{id}/status?toStatus={toStatus}", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                _result = $"销售单状态已更新为 {toStatus}";
+                await LoadAsync();
+            }
+            else
+            {
+                _result = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+}

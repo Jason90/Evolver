@@ -1,6 +1,61 @@
 @page "/sales/forecast"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
 
 <PageTitle>销售预测</PageTitle>
+<h1 class="mb-2">销售预测</h1>
+<p class="text-muted">根据历史销售：畅销品 +20%，非畅销 -20%。</p>
 
-<ComingSoonPanel Title="销售预测"
-                 Description="销量预测、版本管理与预测准确率跟踪。" />
+<div class="row g-2 mb-3">
+    <div class="col-md-3"><input class="form-control" placeholder="市场（可空）" @bind="_market" /></div>
+    <div class="col-md-2"><button class="btn btn-primary" @onclick="LoadForecastAsync" disabled="@_busy">生成预测</button></div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_message))
+{
+    <div class="alert alert-info">@_message</div>
+}
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr><th>市场</th><th>商品</th><th>历史销量</th><th>建议调整</th><th>预测销量</th><th>畅销</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var r in _rows)
+            {
+                <tr>
+                    <td>@r.Market</td>
+                    <td>@r.ProductCode - @r.ProductName</td>
+                    <td>@r.HistoricalUnits</td>
+                    <td>@r.SuggestedDeltaPercent%</td>
+                    <td>@r.ForecastUnits</td>
+                    <td>@(r.IsBestSeller ? "是" : "否")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private string? _market;
+    private bool _busy;
+    private string? _message;
+    private List<SalesForecastLineDto> _rows = new();
+
+    private async Task LoadForecastAsync()
+    {
+        _busy = true;
+        _message = null;
+        try
+        {
+            var env = await Http.PostAsJsonAsync("api/business/sales-forecast", new ForecastRequestDto(_market, null, null));
+            var text = await env.Content.ReadAsStringAsync();
+            var data = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<List<SalesForecastLineDto>>>(text, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _rows = data?.Success == true ? data.Data ?? new() : new();
+            _message = data?.Success == true ? $"预测完成，共 {_rows.Count} 条。" : (data?.Message ?? "预测失败。");
+        }
+        finally { _busy = false; }
+    }
+}

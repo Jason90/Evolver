@@ -1,24 +1,47 @@
 namespace Evolver.Shared.Dtos;
 
-public sealed record ProductDto(
+public sealed record ProductListItemDto(
     long Id,
     string Code,
     string Name,
-    decimal UnitPrice,
-    decimal? UnitCost
+    string? ProductTypeCode,
+    string? UnitCode,
+    string? Barcode,
+    string? Brand,
+    string? Model,
+    decimal? UnitCost,
+    decimal? SuggestedPrice,
+    decimal TheoreticalStock,
+    decimal ActualStock,
+    decimal AlertStock,
+    string? Remark,
+    bool IsActive,
+    DateTime? UpdateTime,
+    int? UpdateBy,
+    string? UpdateByUserName
 );
 
-public sealed record ProductCreateDto(
+public sealed record UpsertProductDto(
     string Code,
     string Name,
-    decimal UnitPrice,
-    decimal? UnitCost
+    string? ProductTypeCode,
+    string? UnitCode,
+    string? Barcode,
+    string? Brand,
+    string? Model,
+    decimal? UnitCost,
+    decimal? SuggestedPrice,
+    decimal TheoreticalStock,
+    decimal ActualStock,
+    decimal AlertStock,
+    string? Remark,
+    bool IsActive
 );
 
-public sealed record ProductUpdateDto(
-    string Code,
-    string Name,
-    decimal UnitPrice,
-    decimal? UnitCost
+public sealed record ProductImportResultDto(
+    int Created,
+    int Updated,
+    int Skipped,
+    IReadOnlyList<string> Messages
 );
 

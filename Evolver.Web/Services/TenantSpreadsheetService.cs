@@ -29,6 +29,9 @@ public sealed class TenantSpreadsheetService(TenantProvisioningService provision
 
         colMap.TryGetValue("rootorgname", out var cRoot);
         colMap.TryGetValue("adminemail", out var cEmail);
+        colMap.TryGetValue("isactive", out var cIsActive);
+        colMap.TryGetValue("expireat", out var cExpireAt);
+        colMap.TryGetValue("remark", out var cRemark);
 
         var messages = new List<string>();
         var created = 0;
@@ -54,6 +57,21 @@ public sealed class TenantSpreadsheetService(TenantProvisioningService provision
 
             var rootOrg = cRoot > 0 ? NullIfEmpty(row.Cell(cRoot).GetString().Trim()) : null;
             var adminEmail = cEmail > 0 ? NullIfEmpty(row.Cell(cEmail).GetString().Trim()) : null;
+            var remark = cRemark > 0 ? NullIfEmpty(row.Cell(cRemark).GetString().Trim()) : null;
+            var isActive = true;
+            if (cIsActive > 0)
+            {
+                var rawStatus = row.Cell(cIsActive).GetString().Trim();
+                if (!string.IsNullOrEmpty(rawStatus))
+                    isActive = !string.Equals(rawStatus, "停用", StringComparison.OrdinalIgnoreCase) && !string.Equals(rawStatus, "false", StringComparison.OrdinalIgnoreCase) && rawStatus != "0";
+            }
+            DateTime? expireAt = null;
+            if (cExpireAt > 0)
+            {
+                var raw = row.Cell(cExpireAt).GetString().Trim();
+                if (!string.IsNullOrEmpty(raw) && DateTime.TryParse(raw, out var parsed))
+                    expireAt = parsed.Date;
+            }
 
             if (string.IsNullOrEmpty(adminPwd))
             {
@@ -64,7 +82,7 @@ public sealed class TenantSpreadsheetService(TenantProvisioningService provision
 
             try
             {
-                var dto = new ProvisionTenantRequestDto(tenantName, adminUser, adminPwd, rootOrg, adminEmail);
+                var dto = new ProvisionTenantRequestDto(tenantName, adminUser, adminPwd, rootOrg, adminEmail, isActive, expireAt, remark);
                 await provisioning.ProvisionAsync(dto, ct);
                 created++;
             }
@@ -104,6 +122,9 @@ public sealed class TenantSpreadsheetService(TenantProvisioningService provision
             "adminusername" or "管理员用户名" or "管理员登录名" => "adminusername",
             "adminpassword" or "管理员密码" or "密码" or "初始密码" => "adminpassword",
             "adminemail" or "邮箱" or "管理员邮箱" or "email" => "adminemail",
+            "isactive" or "状态" or "是否激活" => "isactive",
+            "expireat" or "到期时间" or "到期日期" => "expireat",
+            "remark" or "备注" => "remark",
             _ => t.ToLowerInvariant()
         };
     }

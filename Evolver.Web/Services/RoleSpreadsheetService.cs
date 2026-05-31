@@ -19,7 +19,7 @@ public sealed class RoleSpreadsheetService(
     public async Task<Stream> ExportAsync(CancellationToken ct)
     {
         var roles = await roleManager.Roles.AsNoTracking()
-            .Where(r => r.TenantId == tenant.TenantId && !r.IsDeleted)
+            .Where(r => r.TenantId == tenant.TenantId && r.IsActive)
             .OrderBy(r => r.Name)
             .ToListAsync(ct);
 
@@ -112,7 +112,7 @@ public sealed class RoleSpreadsheetService(
 
             var normalized = roleManager.NormalizeKey(name);
             var existing = await roleManager.Roles.FirstOrDefaultAsync(
-                r => r.TenantId == tenant.TenantId && !r.IsDeleted && r.NormalizedName == normalized,
+                r => r.TenantId == tenant.TenantId && r.IsActive && r.NormalizedName == normalized,
                 ct);
 
             if (existing is null)

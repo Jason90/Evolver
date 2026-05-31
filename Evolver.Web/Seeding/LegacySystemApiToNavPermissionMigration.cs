@@ -30,6 +30,8 @@ public static class LegacySystemApiToNavPermissionMigration
                 NavSystemSettingsPermissionCodes.Users.Delete,
                 NavSystemSettingsPermissionCodes.Users.Import,
                 NavSystemSettingsPermissionCodes.Users.Export,
+                NavSystemSettingsPermissionCodes.Users.ResetPassword,
+                NavSystemSettingsPermissionCodes.Users.MoveDepartment,
             ],
             "dictionary.read" => [NavSystemSettingsPermissionCodes.Dictionary.Query],
             "dictionary.write" =>

@@ -218,17 +218,6 @@
                             <label class="form-label">备注</label>
                             <textarea class="form-control" rows="3" @bind="_mRemark" @bind:event="oninput" placeholder="任意说明" disabled="@_busy"></textarea>
                         </div>
-                        @if (_itemModalEditId is not null)
-                        {
-                            <div class="col-md-6">
-                                <label class="form-label">修改日期</label>
-                                <input class="form-control" value="@FormatDateTime(_mLastUpdateTime)" disabled />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">修改人</label>
-                                <input class="form-control" value="@(_mLastUpdateByDisplay ?? "—")" disabled />
-                            </div>
-                        }
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -267,8 +256,6 @@
     private string? _mRemark;
     private bool _mActive = true;
     private int _mSortOrder;
-    private DateTime? _mLastUpdateTime;
-    private string? _mLastUpdateByDisplay;
 
     private bool IsAllSelected =>
         _rows.Count > 0 && _rows.All(r => _selectedIds.Contains(r.Id));
@@ -399,8 +386,6 @@
         _mRemark = null;
         _mActive = true;
         _mSortOrder = 0;
-        _mLastUpdateTime = null;
-        _mLastUpdateByDisplay = null;
         _itemModalOpen = true;
     }
 
@@ -414,8 +399,6 @@
         _mRemark = r.Remark;
         _mActive = r.IsActive;
         _mSortOrder = r.SortOrder;
-        _mLastUpdateTime = r.UpdateTime;
-        _mLastUpdateByDisplay = FormatModifier(r);
         _itemModalOpen = true;
     }
 

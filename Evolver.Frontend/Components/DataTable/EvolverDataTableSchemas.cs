@@ -11,4 +11,20 @@ public static class EvolverDataTableSchemas
 
     /// <summary>组织架构树表（Tabulator dataTree）。</summary>
     public const string Organizations = "organizations";
+
+    public const string Units = "units";
+
+    public const string ProductCategories = "productCategories";
+
+    public const string Products = "products";
+
+    public const string CustomerCategories = "customerCategories";
+
+    public const string Customers = "customers";
+
+    public const string Suppliers = "suppliers";
+
+    public const string Markets = "markets";
+
+    public const string Parameters = "parameters";
 }

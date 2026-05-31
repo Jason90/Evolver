@@ -19,8 +19,12 @@ public sealed partial class AppDbContext : IdentityDbContext<AppUser, AppRole, l
 
     public DbSet<DataDictionaryItem> DataDictionaryItems => Set<DataDictionaryItem>();
     public DbSet<DataDictionaryType> DataDictionaryTypes => Set<DataDictionaryType>();
+    public DbSet<EnumTypeConfig> EnumTypeConfigs => Set<EnumTypeConfig>();
+    public DbSet<EnumValueConfig> EnumValueConfigs => Set<EnumValueConfig>();
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<Unit> Units => Set<Unit>();
+    public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
 
     public DbSet<BomHeader> BomHeaders => Set<BomHeader>();
     public DbSet<BomLine> BomLines => Set<BomLine>();
@@ -42,6 +46,7 @@ public sealed partial class AppDbContext : IdentityDbContext<AppUser, AppRole, l
     public DbSet<ProductionWasteRecord> ProductionWasteRecords => Set<ProductionWasteRecord>();
 
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerCategory> CustomerCategories => Set<CustomerCategory>();
     public DbSet<MembershipAccount> MembershipAccounts => Set<MembershipAccount>();
     public DbSet<MembershipPointsLedger> MembershipPointsLedgers => Set<MembershipPointsLedger>();
 

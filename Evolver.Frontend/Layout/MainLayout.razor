@@ -5,18 +5,27 @@
 @inject IJSRuntime Js
 @inject NavigationManager Nav
 
-<div class="page">
+<div class="page @(_sidebarCollapsed ? "sidebar-collapsed" : null)">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row px-4 d-flex justify-content-between align-items-center">
-            <span class="text-muted small">Grill Shack / Evolver</span>
-            <div class="d-flex align-items-center gap-2">
+        <div class="top-row px-4 d-flex justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                <button type="button"
+                        class="btn btn-sm ev-sidebar-toggle"
+                        title="@(_sidebarCollapsed ? "显示导航栏" : "隐藏导航栏")"
+                        aria-label="@(_sidebarCollapsed ? "显示导航栏" : "隐藏导航栏")"
+                        @onclick="ToggleSidebar">
+                    <i class="bi bi-list fs-5" aria-hidden="true"></i>
+                </button>
+                <AppBreadcrumb />
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
                 <AuthorizeView>
                     <Authorized>
-                        <span class="text-muted small">@context.User.Identity?.Name</span>
+                        <span class="text-muted small d-none d-md-inline">@context.User.Identity?.Name</span>
                         <a class="btn btn-sm btn-outline-primary" href="/account">我的帐户</a>
                     </Authorized>
                 </AuthorizeView>
@@ -31,6 +40,10 @@
 </div>
 
 @code {
+    private bool _sidebarCollapsed;
+
+    private void ToggleSidebar() => _sidebarCollapsed = !_sidebarCollapsed;
+
     private async Task LogoutAsync()
     {
         Tokens.Clear();

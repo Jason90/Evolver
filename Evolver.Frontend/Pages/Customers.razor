@@ -1,6 +1,431 @@
 @page "/customers"
+@using System.Globalization
+@using System.Text.Json
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject HttpClient Http
+@inject IJSRuntime JS
 
-<PageTitle>客户与会员</PageTitle>
+<PageTitle>客户信息</PageTitle>
 
-<ComingSoonPanel Title="客户管理（2.2）"
-                 Description="客户类型、联系方式、手机/会员号/姓名检索；会员折扣、积分、充值及与订单联动。" />
+<h1 class="mb-2">客户信息</h1>
+<p class="text-muted mb-3">维护客户档案（客户类别、姓名、性别、生日、职务、手机、电子邮箱、备注、是否激活、更新时间、更新人）。删除存在关联时会自动改为停用，并在本列表显示删除线。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+@if (_pane == Pane.List)
+{
+    <EvolverDataTable TableHostId="@TableHostId" Loading="@(_rows is null)">
+        <ToolbarStart>
+            <div class="position-relative">
+                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" /></svg>
+                </span>
+                <input type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索" value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            </div>
+        </ToolbarStart>
+        <ToolbarEnd>
+            <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreate" disabled="@_busy"><i class="bi bi-plus-lg me-1"></i>新增</button>
+            <div @ref="_exportDropdownRoot" class="dropdown position-relative">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" @onclick="() => _exportMenuOpen = !_exportMenuOpen" disabled="@(_busy || _rows is null)">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+                @if (_exportMenuOpen)
+                {
+                    <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                    </div>
+                }
+            </div>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="导入 .xlsx，工作表名 Customers">
+                <i class="bi bi-upload me-1"></i>导入
+                <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
+            </label>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DownloadTemplateAsync" disabled="@_busy"><i class="bi bi-file-earmark-arrow-down me-1"></i>模板</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy"><i class="bi bi-arrow-clockwise me-1"></i>刷新</button>
+        </ToolbarEnd>
+    </EvolverDataTable>
+}
+else if (_pane == Pane.Create || _pane == Pane.Edit)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回列表</button>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header">@(_pane == Pane.Create ? "新增客户" : "编辑客户")</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">客户类别</label>
+                    <select class="form-select" @bind="_customerCategoryRefId">
+                        <option value="">-- 请选择 --</option>
+                        @foreach (var c in _categoryOptions)
+                        {
+                            <option value="@c.Id">@($"{c.CategoryCode} - {c.Name}")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6"><label class="form-label">姓名 <span class="text-danger">*</span></label><input class="form-control" @bind="_name" @bind:event="oninput" /></div>
+                <div class="col-md-4">
+                    <label class="form-label">性别</label>
+                    <select class="form-select" @bind="_gender">
+                        <option value="">-- 请选择 --</option>
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                        <option value="未知">未知</option>
+                    </select>
+                </div>
+                <div class="col-md-4"><label class="form-label">生日</label><input type="date" class="form-control" @bind="_birthday" /></div>
+                <div class="col-md-4"><label class="form-label">职务</label><input class="form-control" @bind="_jobTitle" @bind:event="oninput" /></div>
+                <div class="col-md-6"><label class="form-label">手机</label><input class="form-control" @bind="_phone" @bind:event="oninput" /></div>
+                <div class="col-md-6"><label class="form-label">电子邮箱</label><input class="form-control" @bind="_email" @bind:event="oninput" /></div>
+                <div class="col-12"><label class="form-label">备注</label><input class="form-control" @bind="_remark" @bind:event="oninput" /></div>
+                <div class="col-md-6"><label class="form-label">更新时间</label><input class="form-control" value="@_updateTimeText" disabled /></div>
+                <div class="col-md-6"><label class="form-label">更新人</label><input class="form-control" value="@_updateByUserName" disabled /></div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="customer-active" @bind="_isActive" />
+                        <label class="form-check-label" for="customer-active">是否激活</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(_busy || !IsFormValid())">保存</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+else if (_pane == Pane.DeleteConfirm && _deleteId is not null)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回列表</button>
+    </div>
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">确认删除</div>
+        <div class="card-body">
+            <p class="mb-3">确定删除客户 <strong>@_deleteCustomerName</strong> 吗？如果存在外键关联将自动改为停用。</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum Pane { List, Create, Edit, DeleteConfirm }
+    private const string TableHostId = "evolver-customer-tabulator-host";
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions TabulatorJsonOpts = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    private string? _error;
+    private string? _success;
+    private bool _busy;
+    private Pane _pane = Pane.List;
+    private List<CustomerListItemDto>? _rows;
+    private List<CustomerCategoryListItemDto> _categoryOptions = new();
+    private string _globalFilter = "";
+    private int _dataTick;
+    private int _tabulatorSyncedTick = -1;
+    private DotNetObjectReference<Customers>? _dotNetRef;
+    private bool _exportMenuOpen;
+    private bool _exportClickOutsideRegistered;
+    private ElementReference _exportDropdownRoot;
+    private long? _editId;
+    private long? _customerCategoryRefId;
+    private string _name = "";
+    private string? _gender;
+    private DateTime? _birthday;
+    private string? _jobTitle;
+    private string? _phone;
+    private string? _email;
+    private string? _remark;
+    private bool _isActive = true;
+    private string _updateTimeText = "-";
+    private string _updateByUserName = "-";
+    private long? _deleteId;
+    private string _deleteCustomerName = "";
+
+    protected override async Task OnInitializedAsync() => await ReloadAllAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pane != Pane.List)
+        {
+            if (_tabulatorSyncedTick >= 0) { await DestroyTabulatorAsync(); _tabulatorSyncedTick = -1; }
+            return;
+        }
+        if (_exportMenuOpen && !_exportClickOutsideRegistered)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("evolverUi.startExportMenuClickOutside", _exportDropdownRoot, _dotNetRef, nameof(OnExportMenuClickOutside));
+                _exportClickOutsideRegistered = true;
+            }
+            catch (JSDisconnectedException) { }
+        }
+        else if (!_exportMenuOpen && _exportClickOutsideRegistered)
+        {
+            try { await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside"); } catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+        if (_rows is null || _tabulatorSyncedTick == _dataTick) return;
+        await SyncTableAsync();
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null; _success = null; _globalFilter = ""; _exportMenuOpen = false;
+        await LoadCategoryOptionsAsync();
+        await LoadRowsAsync();
+    }
+
+    private async Task LoadRowsAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<CustomerListItemDto>>>("api/customers");
+            _rows = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false) _error = env.Message;
+        }
+        catch (Exception ex) { _error = ex.Message; _rows = new(); }
+        finally { _dataTick++; }
+    }
+
+    private async Task LoadCategoryOptionsAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<CustomerCategoryListItemDto>>>("api/customer-categories/active");
+            _categoryOptions = env?.Success == true ? env.Data ?? new() : new();
+        }
+        catch
+        {
+            _categoryOptions = new();
+        }
+    }
+
+    private async Task SyncTableAsync()
+    {
+        if (_rows is null) return;
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+        var json = JsonSerializer.Serialize(_rows.Select(x => new
+        {
+            id = x.Id,
+            customerCategoryName = x.CustomerCategoryName ?? "-",
+            name = x.Name,
+            gender = x.Gender ?? "-",
+            birthdayText = x.Birthday?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-",
+            jobTitle = x.JobTitle ?? "-",
+            phone = x.Phone ?? "-",
+            email = x.Email ?? "-",
+            remark = x.Remark ?? "",
+            isActive = x.IsActive,
+            statusText = x.IsActive ? "是" : "否",
+            updateTimeText = x.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "-",
+            updateByUserName = x.UpdateByUserName ?? "-"
+        }).ToList(), TabulatorJsonOpts);
+        await EvolverDataTableInterop.SyncAsync(JS, TableHostId, json, _dotNetRef, EvolverDataTableSchemas.Customers, null);
+        _tabulatorSyncedTick = _dataTick;
+        await EvolverDataTableInterop.SetGlobalFilterAsync(JS, TableHostId, _globalFilter);
+    }
+
+    private void OpenCreate()
+    {
+        _pane = Pane.Create;
+        _editId = null;
+        _customerCategoryRefId = null;
+        _name = "";
+        _gender = null;
+        _birthday = null;
+        _jobTitle = null;
+        _phone = null;
+        _email = null;
+        _remark = null;
+        _isActive = true;
+        _updateTimeText = "-";
+        _updateByUserName = "-";
+        _error = null;
+        _success = null;
+    }
+
+    private async Task OpenEditAsync(long id)
+    {
+        _pane = Pane.Edit; _editId = id; _error = null; _success = null;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<CustomerListItemDto>>($"api/customers/{id}");
+            if (env?.Success != true || env.Data is null) { _error = env?.Message ?? "加载详情失败。"; await CancelToListAsync(); return; }
+            _customerCategoryRefId = env.Data.CustomerCategoryRefId;
+            _name = env.Data.Name;
+            _gender = env.Data.Gender;
+            _birthday = env.Data.Birthday is null ? null : env.Data.Birthday.Value.ToDateTime(TimeOnly.MinValue);
+            _jobTitle = env.Data.JobTitle;
+            _phone = env.Data.Phone;
+            _email = env.Data.Email;
+            _remark = env.Data.Remark;
+            _isActive = env.Data.IsActive;
+            _updateTimeText = env.Data.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "-";
+            _updateByUserName = env.Data.UpdateByUserName ?? "-";
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await CancelToListAsync();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_busy || !IsFormValid()) return;
+        _busy = true; _error = null; _success = null;
+        try
+        {
+            DateOnly? birthday = _birthday is null ? null : DateOnly.FromDateTime(_birthday.Value);
+
+            var dto = new UpsertCustomerDto(
+                _customerCategoryRefId,
+                _name.Trim(),
+                string.IsNullOrWhiteSpace(_gender) ? null : _gender.Trim(),
+                birthday,
+                string.IsNullOrWhiteSpace(_jobTitle) ? null : _jobTitle.Trim(),
+                string.IsNullOrWhiteSpace(_phone) ? null : _phone.Trim(),
+                string.IsNullOrWhiteSpace(_email) ? null : _email.Trim(),
+                string.IsNullOrWhiteSpace(_remark) ? null : _remark.Trim(),
+                _isActive);
+
+            HttpResponseMessage resp = _pane == Pane.Create
+                ? await Http.PostAsJsonAsync("api/customers", dto)
+                : await Http.PutAsJsonAsync($"api/customers/{_editId}", dto);
+            if (!resp.IsSuccessStatusCode) { _error = await ReadErrorAsync(resp); return; }
+            _success = _pane == Pane.Create ? "新增成功。" : "修改成功。";
+            await CancelToListAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task DownloadTemplateAsync()
+    {
+        if (_busy) return;
+        _busy = true; _error = null;
+        try
+        {
+            await JS.InvokeVoidAsync("open", "api/customers/import-template", "_blank");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OpenDelete(long id)
+    {
+        _deleteId = id; _deleteCustomerName = _rows?.FirstOrDefault(x => x.Id == id)?.Name ?? $"#{id}"; _pane = Pane.DeleteConfirm; _error = null; _success = null;
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy || _deleteId is not { } id) return;
+        _busy = true; _error = null; _success = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/customers/{id}");
+            if (!resp.IsSuccessStatusCode) { _error = await ReadErrorAsync(resp); return; }
+            _success = resp.StatusCode == System.Net.HttpStatusCode.OK
+                ? ((await resp.Content.ReadAsStringAsync()).Trim('"'))
+                : "已删除。";
+            if (string.IsNullOrWhiteSpace(_success)) _success = "存在关联数据，已改为停用。";
+            await CancelToListAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ImportExcelAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy || e.FileCount == 0) return;
+        _busy = true; _error = null; _success = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20_000_000);
+            using var content = new MultipartFormDataContent();
+            content.Add(new StreamContent(stream), "file", e.File.Name);
+            var resp = await Http.PostAsync("api/customers/import", content);
+            if (!resp.IsSuccessStatusCode) { _error = await ReadErrorAsync(resp); return; }
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<CustomerImportResultDto>>(await resp.Content.ReadAsStringAsync(), JsonOpts);
+            if (env?.Success == true && env.Data is { } d) _success = $"导入完成：新建 {d.Created}，更新 {d.Updated}，跳过 {d.Skipped}。";
+            else _error = env?.Message ?? "导入失败。";
+            await LoadRowsAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _busy = false; }
+    }
+
+    private async Task ExportAndCloseAsync(string format)
+    {
+        _exportMenuOpen = false;
+        if (_busy) return;
+        _busy = true;
+        try { await EvolverDataTableInterop.DownloadAsync(JS, TableHostId, format); }
+        finally { _busy = false; }
+    }
+
+    private bool IsFormValid() => !string.IsNullOrWhiteSpace(_name);
+    private async Task OnGlobalFilterInput(ChangeEventArgs e) { _globalFilter = e.Value?.ToString() ?? ""; await EvolverDataTableInterop.SetGlobalFilterAsync(JS, TableHostId, _globalFilter); }
+    [JSInvokable]
+    public async Task OnCustomerTableEdit(long id)
+    {
+        await OpenEditAsync(id);
+        await InvokeAsync(StateHasChanged);
+    }
+    [JSInvokable] public Task OnCustomerTableDelete(long id) { OpenDelete(id); return InvokeAsync(StateHasChanged); }
+    [JSInvokable] public Task OnExportMenuClickOutside() { _exportMenuOpen = false; return InvokeAsync(StateHasChanged); }
+
+    private async Task CancelToListAsync()
+    {
+        _pane = Pane.List; _deleteId = null; _deleteCustomerName = ""; await LoadRowsAsync(); await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<string> ReadErrorAsync(HttpResponseMessage resp)
+    {
+        var text = await resp.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(text)) return $"请求失败（{(int)resp.StatusCode}）";
+        return text.Length > 400 ? text[..400] + "..." : text;
+    }
+
+    private async Task DestroyTabulatorAsync() { try { await EvolverDataTableInterop.DestroyAsync(JS, TableHostId); } catch { } }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_exportClickOutsideRegistered) { try { await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside"); } catch (JSDisconnectedException) { } }
+        await DestroyTabulatorAsync();
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}

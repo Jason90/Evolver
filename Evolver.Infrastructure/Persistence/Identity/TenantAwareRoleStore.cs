@@ -29,7 +29,7 @@ public sealed class TenantAwareRoleStore : RoleStore<AppRole, AppDbContext, long
         return await Roles
             .OrderBy(r => r.Id)
             .FirstOrDefaultAsync(
-                r => r.NormalizedName == normalizedRoleName && r.TenantId == _tenant.TenantId && !r.IsDeleted,
+                r => r.NormalizedName == normalizedRoleName && r.TenantId == _tenant.TenantId && r.IsActive,
                 cancellationToken)
             .ConfigureAwait(false);
     }

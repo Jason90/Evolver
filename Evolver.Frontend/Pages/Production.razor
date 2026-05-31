@@ -1,6 +1,760 @@
 @page "/production"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
+@inject IJSRuntime JS
 
 <PageTitle>生产管理</PageTitle>
 
-<ComingSoonPanel Title="生产管理（2.5）"
-                 Description="BOM、领料/退料、生产单与计划/实产、成品入库、损耗记录。" />
+<h1 class="mb-2">生产管理</h1>
+<p class="text-muted mb-3">按 `Production.Unified.sql` 统一设计实现：BOM、生产工单、库存流水。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+        <i class="bi bi-arrow-clockwise me-1"></i>刷新全部
+    </button>
+</div>
+
+<div class="card mb-3 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>BOM</span>
+        <button class="btn btn-primary btn-sm" @onclick="OpenBomCreate">新增 BOM</button>
+    </div>
+    <div class="card-body">
+        @if (_boms is null)
+        {
+            <p class="text-muted mb-0">加载中...</p>
+        }
+        else if (_boms.Count == 0)
+        {
+            <p class="text-muted mb-0">暂无 BOM。</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>成品</th>
+                            <th>版本</th>
+                            <th>生效日期</th>
+                            <th>状态</th>
+                            <th>更新时间</th>
+                            <th>更新人</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in _boms)
+                        {
+                            <tr>
+                                <td>@b.FinishedProductCode - @b.FinishedProductName</td>
+                                <td>@b.Version</td>
+                                <td>@(b.EffectiveFrom?.ToString() ?? "-") ~ @(b.EffectiveTo?.ToString() ?? "-")</td>
+                                <td>@(b.IsActive ? "启用" : "停用")</td>
+                                <td>@(b.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                                <td>@(b.UpdateByUserName ?? "-")</td>
+                                <td class="text-nowrap">
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => OpenBomEdit(b)">编辑</button>
+                                    <button class="btn btn-outline-danger btn-sm ms-1" @onclick="() => DeleteBomAsync(b.Id)">删除</button>
+                                </td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="7">
+                                    <small class="text-muted">明细：</small>
+                                    <div class="mt-1">
+                                        @foreach (var l in b.Lines.OrderBy(x => x.SortOrder))
+                                        {
+                                            <span class="badge text-bg-secondary me-1 mb-1">
+                                                @l.SortOrder. @l.ComponentProductCode x @l.Quantity @l.Unit
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mb-3 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>生产工单</span>
+        <button class="btn btn-primary btn-sm" @onclick="OpenOrderCreate">新增工单</button>
+    </div>
+    <div class="card-body">
+        @if (_orders is null)
+        {
+            <p class="text-muted mb-0">加载中...</p>
+        }
+        else if (_orders.Count == 0)
+        {
+            <p class="text-muted mb-0">暂无生产工单。</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>工单号</th>
+                            <th>产出商品</th>
+                            <th>状态</th>
+                            <th>计划/实产</th>
+                            <th>更新时间</th>
+                            <th>更新人</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in _orders)
+                        {
+                            <tr>
+                                <td>@o.OrderNo</td>
+                                <td>@o.OutputProductCode - @o.OutputProductName</td>
+                                <td>@o.Status</td>
+                                <td>@o.PlannedQuantity / @o.ActualQuantity</td>
+                                <td>@(o.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                                <td>@(o.UpdateByUserName ?? "-")</td>
+                                <td class="text-nowrap">
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => OpenOrderEdit(o)">编辑</button>
+                                    <button class="btn btn-outline-danger btn-sm ms-1" @onclick="() => DeleteOrderAsync(o.Id)">删除</button>
+                                    <button class="btn btn-outline-secondary btn-sm ms-1" @onclick="() => StartProductionAsync(o.Id)" disabled="@(o.Status == "InProgress" || o.Status == "Completed")">开工</button>
+                                    <button class="btn btn-outline-success btn-sm ms-1" @onclick="() => CompleteProductionAsync(o.Id, o.PlannedQuantity)" disabled="@(o.Status == "Completed")">完工</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>库存流水</span>
+        <button class="btn btn-primary btn-sm" @onclick="OpenTxCreate">新增流水</button>
+    </div>
+    <div class="card-body">
+        @if (_transactions is null)
+        {
+            <p class="text-muted mb-0">加载中...</p>
+        }
+        else if (_transactions.Count == 0)
+        {
+            <p class="text-muted mb-0">暂无库存流水。</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>类型</th>
+                            <th>商品</th>
+                            <th>数量</th>
+                            <th>前/后</th>
+                            <th>来源</th>
+                            <th>参考号</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in _transactions)
+                        {
+                            <tr>
+                                <td>@t.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@t.TransactionType</td>
+                                <td>@t.ProductCode - @t.ProductName</td>
+                                <td>@t.Quantity</td>
+                                <td>@t.BeforeQuantity / @t.AfterQuantity</td>
+                                <td>@t.SourceType @((t.SourceId is null) ? "" : $"#{t.SourceId}")</td>
+                                <td>@(t.ReferenceNo ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@if (_bomEditorOpen)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingBomId is null ? "新增 BOM" : $"编辑 BOM #{_editingBomId}")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseBomEditor"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">成品商品Id</label>
+                            <input class="form-control" @bind="_bomFinishedProductIdStr" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">版本</label>
+                            <input class="form-control" type="number" @bind="_bomVersion" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">启用</label>
+                            <select class="form-select" @bind="_bomIsActive">
+                                <option value="true">是</option>
+                                <option value="false">否</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">生效起</label>
+                            <input class="form-control" placeholder="yyyy-MM-dd" @bind="_bomEffectiveFromStr" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">生效止</label>
+                            <input class="form-control" placeholder="yyyy-MM-dd" @bind="_bomEffectiveToStr" />
+                        </div>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>BOM 明细</strong>
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="AddBomLine">新增行</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>组件商品Id</th>
+                                    <th>数量</th>
+                                    <th>单位</th>
+                                    <th>排序</th>
+                                    <th>损耗率</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (var i = 0; i < _bomLines.Count; i++)
+                                {
+                                    var line = _bomLines[i];
+                                    <tr>
+                                        <td><input class="form-control" @bind="line.ComponentProductIdStr" /></td>
+                                        <td><input class="form-control" @bind="line.QuantityStr" /></td>
+                                        <td><input class="form-control" @bind="line.Unit" /></td>
+                                        <td><input class="form-control" @bind="line.SortOrderStr" /></td>
+                                        <td><input class="form-control" @bind="line.ScrapRateStr" /></td>
+                                        <td><button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveBomLine(i)">删除</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="SaveBomAsync" disabled="@_busy">保存</button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseBomEditor" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_orderEditorOpen)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingOrderId is null ? "新增工单" : $"编辑工单 #{_editingOrderId}")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseOrderEditor"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-4"><label class="form-label">工单号</label><input class="form-control" @bind="_orderNo" /></div>
+                        <div class="col-md-3"><label class="form-label">产出商品Id</label><input class="form-control" @bind="_orderOutputProductIdStr" /></div>
+                        <div class="col-md-2"><label class="form-label">状态</label><input class="form-control" @bind="_orderStatus" /></div>
+                        <div class="col-md-3"><label class="form-label">计划/实产</label><input class="form-control" @bind="_orderQtyText" /></div>
+                        <div class="col-md-12"><label class="form-label">备注</label><input class="form-control" @bind="_orderNotes" /></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="SaveOrderAsync" disabled="@_busy">保存</button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseOrderEditor" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_txEditorOpen)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新增库存流水</h5>
+                    <button type="button" class="btn-close" @onclick="CloseTxEditor"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-6"><label class="form-label">类型</label><input class="form-control" @bind="_txType" /></div>
+                        <div class="col-md-6"><label class="form-label">来源类型</label><input class="form-control" @bind="_txSourceType" /></div>
+                        <div class="col-md-6"><label class="form-label">商品Id</label><input class="form-control" @bind="_txProductIdStr" /></div>
+                        <div class="col-md-6"><label class="form-label">数量</label><input class="form-control" @bind="_txQuantityStr" /></div>
+                        <div class="col-md-6"><label class="form-label">前数量</label><input class="form-control" @bind="_txBeforeStr" /></div>
+                        <div class="col-md-6"><label class="form-label">后数量</label><input class="form-control" @bind="_txAfterStr" /></div>
+                        <div class="col-md-6"><label class="form-label">来源Id</label><input class="form-control" @bind="_txSourceIdStr" /></div>
+                        <div class="col-md-6"><label class="form-label">参考号</label><input class="form-control" @bind="_txRefNo" /></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="SaveTxAsync" disabled="@_busy">保存</button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseTxEditor" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string? _error;
+    private string? _success;
+    private bool _busy;
+
+    private List<BomHeaderDto>? _boms;
+    private List<ProductionOrderDto>? _orders;
+    private List<InventoryTransactionDto>? _transactions;
+
+    private bool _bomEditorOpen;
+    private long? _editingBomId;
+    private string _bomFinishedProductIdStr = "";
+    private int _bomVersion = 1;
+    private bool _bomIsActive = true;
+    private string? _bomEffectiveFromStr;
+    private string? _bomEffectiveToStr;
+    private readonly List<BomLineEditor> _bomLines = new();
+
+    private bool _orderEditorOpen;
+    private long? _editingOrderId;
+    private string _orderNo = "";
+    private string _orderOutputProductIdStr = "";
+    private string _orderStatus = "Draft";
+    private string _orderQtyText = "0/0";
+    private string? _orderNotes;
+
+    private bool _txEditorOpen;
+    private string _txType = "ProductionOutput";
+    private string _txSourceType = "ProductionOrder";
+    private string _txProductIdStr = "";
+    private string _txQuantityStr = "0";
+    private string _txBeforeStr = "0";
+    private string _txAfterStr = "0";
+    private string? _txSourceIdStr;
+    private string? _txRefNo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAllAsync();
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null;
+        await Task.WhenAll(LoadBomsAsync(), LoadOrdersAsync(), LoadTransactionsAsync());
+    }
+
+    private async Task LoadBomsAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<BomHeaderDto>>>("api/production/boms");
+            _boms = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false) _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _boms = new();
+        }
+    }
+
+    private async Task LoadOrdersAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<ProductionOrderDto>>>("api/production/orders");
+            _orders = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false) _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _orders = new();
+        }
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<InventoryTransactionDto>>>("api/production/inventory-transactions");
+            _transactions = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false) _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _transactions = new();
+        }
+    }
+
+    private void OpenBomCreate()
+    {
+        _editingBomId = null;
+        _bomFinishedProductIdStr = "";
+        _bomVersion = 1;
+        _bomIsActive = true;
+        _bomEffectiveFromStr = null;
+        _bomEffectiveToStr = null;
+        _bomLines.Clear();
+        _bomEditorOpen = true;
+    }
+
+    private void OpenBomEdit(BomHeaderDto bom)
+    {
+        _editingBomId = bom.Id;
+        _bomFinishedProductIdStr = bom.FinishedProductId.ToString();
+        _bomVersion = bom.Version;
+        _bomIsActive = bom.IsActive;
+        _bomEffectiveFromStr = bom.EffectiveFrom?.ToString("yyyy-MM-dd");
+        _bomEffectiveToStr = bom.EffectiveTo?.ToString("yyyy-MM-dd");
+        _bomLines.Clear();
+        foreach (var l in bom.Lines)
+        {
+            _bomLines.Add(new BomLineEditor
+            {
+                ComponentProductIdStr = l.ComponentProductId.ToString(),
+                QuantityStr = l.Quantity.ToString(),
+                Unit = l.Unit,
+                SortOrderStr = l.SortOrder.ToString(),
+                ScrapRateStr = l.ScrapRate?.ToString()
+            });
+        }
+        _bomEditorOpen = true;
+    }
+
+    private void CloseBomEditor() => _bomEditorOpen = false;
+
+    private void AddBomLine() => _bomLines.Add(new BomLineEditor { Unit = "pcs", SortOrderStr = (_bomLines.Count + 1).ToString(), QuantityStr = "1" });
+
+    private void RemoveBomLine(int idx)
+    {
+        if (idx >= 0 && idx < _bomLines.Count)
+            _bomLines.RemoveAt(idx);
+    }
+
+    private async Task SaveBomAsync()
+    {
+        if (_busy) return;
+        if (!long.TryParse(_bomFinishedProductIdStr, out var finishedProductId))
+        {
+            _error = "成品商品Id无效。";
+            return;
+        }
+        var lines = new List<UpsertBomLineDto>();
+        foreach (var l in _bomLines)
+        {
+            if (!long.TryParse(l.ComponentProductIdStr, out var componentId)) continue;
+            decimal.TryParse(l.QuantityStr, out var qty);
+            int.TryParse(l.SortOrderStr, out var sort);
+            decimal? scrap = decimal.TryParse(l.ScrapRateStr, out var s) ? s : null;
+            lines.Add(new UpsertBomLineDto(null, componentId, qty, string.IsNullOrWhiteSpace(l.Unit) ? "pcs" : l.Unit.Trim(), sort, scrap));
+        }
+
+        DateOnly? effectiveFrom = DateOnly.TryParse(_bomEffectiveFromStr, out var ef) ? ef : null;
+        DateOnly? effectiveTo = DateOnly.TryParse(_bomEffectiveToStr, out var et) ? et : null;
+        var dto = new UpsertBomHeaderDto(finishedProductId, _bomVersion, _bomIsActive, effectiveFrom, effectiveTo, lines);
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            HttpResponseMessage resp;
+            if (_editingBomId is null)
+                resp = await Http.PostAsJsonAsync("api/production/boms", dto);
+            else
+                resp = await Http.PutAsJsonAsync($"api/production/boms/{_editingBomId}", dto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "BOM 已保存。";
+            _bomEditorOpen = false;
+            await LoadBomsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteBomAsync(long id)
+    {
+        if (_busy) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"确认删除 BOM #{id}?")) return;
+        _busy = true;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/production/boms/{id}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "BOM 已删除。";
+            await LoadBomsAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private void OpenOrderCreate()
+    {
+        _editingOrderId = null;
+        _orderNo = "";
+        _orderOutputProductIdStr = "";
+        _orderStatus = "Draft";
+        _orderQtyText = "0/0";
+        _orderNotes = null;
+        _orderEditorOpen = true;
+    }
+
+    private void OpenOrderEdit(ProductionOrderDto o)
+    {
+        _editingOrderId = o.Id;
+        _orderNo = o.OrderNo;
+        _orderOutputProductIdStr = o.OutputProductId.ToString();
+        _orderStatus = o.Status;
+        _orderQtyText = $"{o.PlannedQuantity}/{o.ActualQuantity}";
+        _orderNotes = o.Notes;
+        _orderEditorOpen = true;
+    }
+
+    private void CloseOrderEditor() => _orderEditorOpen = false;
+
+    private async Task SaveOrderAsync()
+    {
+        if (_busy) return;
+        if (!long.TryParse(_orderOutputProductIdStr, out var outputProductId))
+        {
+            _error = "产出商品Id无效。";
+            return;
+        }
+
+        var parts = (_orderQtyText ?? "0/0").Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        decimal planned = 0m, actual = 0m;
+        if (parts.Length > 0) decimal.TryParse(parts[0], out planned);
+        if (parts.Length > 1) decimal.TryParse(parts[1], out actual);
+
+        var dto = new UpsertProductionOrderDto(
+            _orderNo,
+            outputProductId,
+            _orderStatus,
+            planned,
+            actual,
+            _orderNotes,
+            Array.Empty<UpsertProductionOrderMaterialDto>(),
+            Array.Empty<UpsertProductionWasteRecordDto>());
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            HttpResponseMessage resp;
+            if (_editingOrderId is null)
+                resp = await Http.PostAsJsonAsync("api/production/orders", dto);
+            else
+                resp = await Http.PutAsJsonAsync($"api/production/orders/{_editingOrderId}", dto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "工单已保存。";
+            _orderEditorOpen = false;
+            await LoadOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteOrderAsync(long id)
+    {
+        if (_busy) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"确认删除工单 #{id}?")) return;
+        _busy = true;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/production/orders/{id}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "工单已删除。";
+            await LoadOrdersAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task StartProductionAsync(long id)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            var resp = await Http.PostAsync($"api/business/production-orders/{id}/status?toStatus=InProgress", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "工单已开工。";
+            await LoadOrdersAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task CompleteProductionAsync(long id, decimal plannedQty)
+    {
+        if (_busy) return;
+        var input = await JS.InvokeAsync<string?>("prompt", $"请输入完工数量（默认 {plannedQty}）", plannedQty.ToString());
+        if (input is null) return;
+        if (!decimal.TryParse(input, out var qty) || qty <= 0)
+        {
+            _error = "完工数量无效。";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var resp = await Http.PostAsync($"api/business/production-orders/{id}/complete?actualQty={qty}", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "工单已完工。";
+            await Task.WhenAll(LoadOrdersAsync(), LoadTransactionsAsync());
+        }
+        finally { _busy = false; }
+    }
+
+    private void OpenTxCreate()
+    {
+        _txType = "ProductionOutput";
+        _txSourceType = "ProductionOrder";
+        _txProductIdStr = "";
+        _txQuantityStr = "0";
+        _txBeforeStr = "0";
+        _txAfterStr = "0";
+        _txSourceIdStr = null;
+        _txRefNo = null;
+        _txEditorOpen = true;
+    }
+
+    private void CloseTxEditor() => _txEditorOpen = false;
+
+    private async Task SaveTxAsync()
+    {
+        if (_busy) return;
+        if (!long.TryParse(_txProductIdStr, out var productId))
+        {
+            _error = "商品Id无效。";
+            return;
+        }
+        decimal.TryParse(_txQuantityStr, out var qty);
+        decimal.TryParse(_txBeforeStr, out var beforeQty);
+        decimal.TryParse(_txAfterStr, out var afterQty);
+        long? sourceId = long.TryParse(_txSourceIdStr, out var sid) ? sid : null;
+
+        var dto = new CreateInventoryTransactionDto(
+            _txType,
+            productId,
+            qty,
+            beforeQty,
+            afterQty,
+            _txSourceType,
+            sourceId,
+            _txRefNo,
+            null,
+            _txRefNo
+        );
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("api/production/inventory-transactions", dto);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _success = "库存流水已创建。";
+            _txEditorOpen = false;
+            await LoadTransactionsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class BomLineEditor
+    {
+        public string ComponentProductIdStr { get; set; } = "";
+        public string QuantityStr { get; set; } = "1";
+        public string Unit { get; set; } = "pcs";
+        public string SortOrderStr { get; set; } = "1";
+        public string? ScrapRateStr { get; set; }
+    }
+}

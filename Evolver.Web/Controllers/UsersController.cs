@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Evolver.Web.Controllers;
 
@@ -20,13 +21,14 @@ public sealed class UsersController(
     RoleManager<AppRole> roleManager,
     AppDbContext db,
     ITenantContext tenant,
-    UserSpreadsheetService spreadsheet
+    UserSpreadsheetService spreadsheet,
+    ILogger<UsersController> logger
 ) : ControllerBase
 {
     /// <param name="status">筛选：<c>all</c>（默认）、<c>active</c>、<c>inactive</c>。</param>
     [HttpGet]
     [RequirePermission(NavSystemSettingsPermissionCodes.Users.Query)]
-    public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> List([FromQuery] string? status, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> List([FromQuery] string? status, [FromQuery] long? orgId, CancellationToken ct)
     {
         var query = userManager.Users
             .AsNoTracking()
@@ -39,13 +41,52 @@ public sealed class UsersController(
             _ => query
         };
 
+        HashSet<long>? orgScope = null;
+        if (orgId is { } oid)
+        {
+            orgScope = await GetOrgSubtreeIdsAsync(oid, ct);
+            if (orgScope.Count == 0)
+                return Ok(Array.Empty<UserListItemDto>());
+            var userIds = await db.UserOrganizations.AsNoTracking()
+                .Where(x => orgScope.Contains(x.OrganizationId))
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToListAsync(ct);
+            query = query.Where(u => userIds.Contains(u.Id));
+        }
+
         var users = await query.OrderBy(u => u.UserName).ToListAsync(ct);
+        var userIdSet = users.Select(u => u.Id).ToHashSet();
+        var userOrgMap = await db.UserOrganizations.AsNoTracking()
+            .Where(x => userIdSet.Contains(x.UserId))
+            .GroupBy(x => x.UserId)
+            .Select(g => new { UserId = g.Key, OrgId = g.Select(z => z.OrganizationId).OrderBy(v => v).FirstOrDefault() })
+            .ToDictionaryAsync(x => x.UserId, x => x.OrgId, ct);
+        var orgIds = userOrgMap.Values.ToHashSet();
+        var orgNameMap = await db.Organizations.AsNoTracking()
+            .Where(o => orgIds.Contains(o.Id))
+            .Select(o => new { o.Id, o.Name })
+            .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
 
         var list = new List<UserListItemDto>();
         foreach (var u in users)
         {
             var roles = await userManager.GetRolesAsync(u);
-            list.Add(new UserListItemDto(u.Id, u.UserName ?? "", u.Email, u.PhoneNumber, u.IsActive, roles.ToList()));
+            userOrgMap.TryGetValue(u.Id, out var did);
+            orgNameMap.TryGetValue(did, out var dname);
+            list.Add(new UserListItemDto(
+                u.Id,
+                u.UserName ?? "",
+                u.Email,
+                u.PhoneNumber,
+                did == 0 ? null : did,
+                dname,
+                u.IsActive,
+                roles.ToList(),
+                u.UpdateTime,
+                u.UpdateBy,
+                null,
+                u.Remark));
         }
 
         return Ok(list);
@@ -97,6 +138,8 @@ public sealed class UsersController(
             user.PhoneNumber,
             user.IsActive,
             user.OrgId,
+            orgIds.Count > 0 ? orgIds[0] : null,
+            user.Remark,
             roles.ToList(),
             orgIds));
     }
@@ -117,7 +160,8 @@ public sealed class UsersController(
             EmailConfirmed = true,
             TenantId = tenant.TenantId,
             OrgId = tenant.OrgId,
-            IsActive = dto.IsActive ?? true
+            IsActive = dto.IsActive ?? true,
+            Remark = string.IsNullOrWhiteSpace(dto.Remark) ? null : dto.Remark.Trim()
         };
 
         var res = await userManager.CreateAsync(user, dto.Password);
@@ -130,8 +174,22 @@ public sealed class UsersController(
             await AssignTenantRolesAsync(user, roleNames, ct);
         }
 
+        if (dto.DepartmentId is { } depId)
+        {
+            await db.UserOrganizations.AddAsync(new UserOrganization
+            {
+                TenantId = tenant.TenantId,
+                OrgId = tenant.OrgId,
+                UserId = user.Id,
+                OrganizationId = depId
+            }, ct);
+            user.OrgId = depId <= int.MaxValue ? (int)depId : tenant.OrgId;
+            await userManager.UpdateAsync(user);
+            await db.SaveChangesAsync(ct);
+        }
+
         var roles = await userManager.GetRolesAsync(user);
-        return Ok(new UserListItemDto(user.Id, user.UserName ?? "", user.Email, user.PhoneNumber, user.IsActive, roles.ToList()));
+        return Ok(new UserListItemDto(user.Id, user.UserName ?? "", user.Email, user.PhoneNumber, dto.DepartmentId, null, user.IsActive, roles.ToList(), user.UpdateTime, user.UpdateBy, null, user.Remark));
     }
 
     [HttpPut("{id:long}")]
@@ -146,15 +204,37 @@ public sealed class UsersController(
             user.Email = dto.Email.Trim();
         if (dto.PhoneNumber is not null)
             user.PhoneNumber = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
+        if (dto.Remark is not null)
+            user.Remark = string.IsNullOrWhiteSpace(dto.Remark) ? null : dto.Remark.Trim();
         if (dto.IsActive is { } active)
             user.IsActive = active;
         if (dto.OrgId is { } orgId)
             user.OrgId = orgId;
 
+        if (dto.DepartmentId is { } depId)
+        {
+            if (!await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == depId && o.TenantId == tenant.TenantId, ct))
+                return BadRequest("目标组织不存在。");
+
+            var existingOrgs = await db.UserOrganizations.Where(x => x.UserId == id).ToListAsync(ct);
+            db.UserOrganizations.RemoveRange(existingOrgs);
+            db.UserOrganizations.Add(new UserOrganization
+            {
+                TenantId = tenant.TenantId,
+                OrgId = tenant.OrgId,
+                UserId = id,
+                OrganizationId = depId
+            });
+
+            if (depId <= int.MaxValue)
+                user.OrgId = (int)depId;
+        }
+
         var res = await userManager.UpdateAsync(user);
         if (!res.Succeeded)
             return BadRequest(string.Join("; ", res.Errors.Select(e => e.Description)));
 
+        await db.SaveChangesAsync(ct);
         return NoContent();
     }
 
@@ -209,7 +289,7 @@ public sealed class UsersController(
         foreach (var rn in roleNames)
         {
             var role = await roleManager.Roles.FirstOrDefaultAsync(
-                r => r.TenantId == tenant.TenantId && r.Name == rn && !r.IsDeleted,
+                r => r.TenantId == tenant.TenantId && r.Name == rn && r.IsActive,
                 ct);
             if (role is null)
                 continue;
@@ -248,8 +328,36 @@ public sealed class UsersController(
         return NoContent();
     }
 
+    [HttpPost("{id:long}/move-department")]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Users.MoveDepartment)]
+    public async Task<ActionResult> MoveDepartment(long id, [FromBody] MoveUserDepartmentDto dto, CancellationToken ct)
+    {
+        var user = await FindUserInTenantAsync(id, ct);
+        if (user is null)
+            return NotFound();
+
+        if (!await db.Organizations.AsNoTracking().AnyAsync(o => o.Id == dto.DepartmentId && o.TenantId == tenant.TenantId, ct))
+            return BadRequest("目标组织不存在。");
+
+        var existing = await db.UserOrganizations.Where(x => x.UserId == id).ToListAsync(ct);
+        db.UserOrganizations.RemoveRange(existing);
+        db.UserOrganizations.Add(new UserOrganization
+        {
+            TenantId = tenant.TenantId,
+            OrgId = tenant.OrgId,
+            UserId = id,
+            OrganizationId = dto.DepartmentId
+        });
+
+        if (dto.DepartmentId <= int.MaxValue)
+            user.OrgId = (int)dto.DepartmentId;
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("User {UserId} moved to department {DepartmentId} by {OperatorId}", id, dto.DepartmentId, tenant.UserId);
+        return NoContent();
+    }
+
     [HttpPost("{id:long}/password")]
-    [RequirePermission(NavSystemSettingsPermissionCodes.Users.Update)]
+    [RequirePermission(NavSystemSettingsPermissionCodes.Users.ResetPassword)]
     public async Task<ActionResult> AdminChangePassword(long id, [FromBody] AdminChangePasswordDto dto, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(dto.NewPassword) || dto.NewPassword.Length < 6)
@@ -264,7 +372,32 @@ public sealed class UsersController(
         if (!res.Succeeded)
             return BadRequest(string.Join("; ", res.Errors.Select(e => e.Description)));
 
+        logger.LogInformation("Password reset for user {UserId} by {OperatorId}", id, tenant.UserId);
         return NoContent();
+    }
+
+    private async Task<HashSet<long>> GetOrgSubtreeIdsAsync(long rootId, CancellationToken ct)
+    {
+        var all = await db.Organizations.AsNoTracking()
+            .Where(o => o.TenantId == tenant.TenantId)
+            .Select(o => new { o.Id, o.ParentId })
+            .ToListAsync(ct);
+        var childrenMap = all.GroupBy(x => x.ParentId).ToLookup(g => g.Key, g => g.Select(v => v.Id).ToList());
+        var result = new HashSet<long>();
+        var q = new Queue<long>();
+        q.Enqueue(rootId);
+        while (q.Count > 0)
+        {
+            var id = q.Dequeue();
+            if (!result.Add(id))
+                continue;
+            foreach (var children in childrenMap[id])
+            {
+                foreach (var ch in children)
+                    q.Enqueue(ch);
+            }
+        }
+        return result;
     }
 
     private async Task<AppUser?> FindUserInTenantAsync(long id, CancellationToken ct)

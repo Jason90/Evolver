@@ -7,6 +7,7 @@ public sealed class ProductCategory : BaseEntity
 
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public bool IsActive { get; set; } = true;
     /// <summary>Raw material, finished good, semi-finished, kit, etc.</summary>
     public string? CategoryKind { get; set; }
 }

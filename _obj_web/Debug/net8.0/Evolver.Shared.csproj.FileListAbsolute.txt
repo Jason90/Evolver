@@ -1,0 +1,6 @@
+c:\JEF\Code\Jason\Cursor\Evolver\_obj_web\Debug\net8.0\Evolver.Shared.csproj.AssemblyReference.cache
+c:\JEF\Code\Jason\Cursor\Evolver\_obj_web\Debug\net8.0\Evolver.Shared.GeneratedMSBuildEditorConfig.editorconfig
+c:\JEF\Code\Jason\Cursor\Evolver\_obj_web\Debug\net8.0\Evolver.Shared.AssemblyInfoInputs.cache
+c:\JEF\Code\Jason\Cursor\Evolver\_obj_web\Debug\net8.0\Evolver.Shared.AssemblyInfo.cs
+c:\JEF\Code\Jason\Cursor\Evolver\_obj_web\Debug\net8.0\Evolver.Shared.csproj.CoreCompileInputs.cache
+c:\JEF\Code\Jason\Cursor\Evolver\_obj_web\Debug\net8.0\Evolver.Shared.sourcelink.json

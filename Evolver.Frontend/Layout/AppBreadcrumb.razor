@@ -1,0 +1,38 @@
+@implements IDisposable
+@inject NavigationManager Nav
+
+<nav aria-label="breadcrumb" class="ev-app-breadcrumb-nav">
+    <ol class="breadcrumb mb-0 ev-app-breadcrumb">
+        @for (var i = 0; i < _items.Count; i++)
+        {
+            var item = _items[i];
+            var isLast = i == _items.Count - 1;
+            <li class="breadcrumb-item @(isLast ? "active" : "")" aria-current="@(isLast ? "page" : null)">
+                @if (!isLast && !string.IsNullOrEmpty(item.Href))
+                {
+                    <a href="@item.Href">@item.Title</a>
+                }
+                else
+                {
+                    @item.Title
+                }
+            </li>
+        }
+    </ol>
+</nav>
+
+@code {
+    private IReadOnlyList<BreadcrumbItem> _items = [new("首页", "/")];
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        Refresh();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => Refresh();
+
+    private void Refresh() => _items = NavigationTrail.Resolve(Nav);
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

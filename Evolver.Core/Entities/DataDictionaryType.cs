@@ -1,7 +1,7 @@
 namespace Evolver.Core.Entities;
 
 /// <summary>
-/// 字典类型（若依「字典管理」中的类型行），与 <see cref="DataDictionaryItem"/> 的 <c>CategoryCode</c> 对应。
+/// 字典类型（若依「枚举配置」中的类型行），与 <see cref="DataDictionaryItem"/> 的 <c>CategoryCode</c> 对应。
 /// </summary>
 public sealed class DataDictionaryType : BaseEntity
 {

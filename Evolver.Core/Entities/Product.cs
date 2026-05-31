@@ -4,9 +4,15 @@ public sealed class Product : BaseEntity
 {
     public long? ProductCategoryId { get; set; }
     public ProductCategory? Category { get; set; }
+    public long? UnitId { get; set; }
+    public Unit? Unit { get; set; }
 
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public string? Barcode { get; set; }
+    public string? Brand { get; set; }
+    public string? Model { get; set; }
+    public string? Remark { get; set; }
 
     public decimal UnitPrice { get; set; }
     public decimal? UnitCost { get; set; }
@@ -23,4 +29,6 @@ public sealed class Product : BaseEntity
     public decimal AlertStock { get; set; }
 
     public decimal? CostAmount { get; set; }
+
+    public bool IsActive { get; set; } = true;
 }

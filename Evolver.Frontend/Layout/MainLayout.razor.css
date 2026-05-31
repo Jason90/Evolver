@@ -23,6 +23,28 @@ main {
 
 .sidebar {
     background-image: linear-gradient(180deg, #071525 0%, #0c2344 42%, #0a1628 100%);
+    transition: width 0.2s ease, min-width 0.2s ease, flex-basis 0.2s ease;
+}
+
+.page.sidebar-collapsed .sidebar {
+    flex: 0 0 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden;
+}
+
+.ev-sidebar-toggle {
+    color: var(--bs-secondary-color);
+    border: 0;
+    background: transparent;
+    line-height: 1;
+    padding: 0.25rem 0.35rem;
+}
+
+.ev-sidebar-toggle:hover,
+.ev-sidebar-toggle:focus-visible {
+    color: var(--bs-primary);
+    background: var(--bs-tertiary-bg);
 }
 
 .top-row {

@@ -7,4 +7,5 @@ public sealed class Organization : BaseEntity
 
     public string Name { get; set; } = "";
     public string? OrgType { get; set; }
+    public bool IsActive { get; set; } = true;
 }

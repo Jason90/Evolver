@@ -1,6 +1,96 @@
 @page "/statistics/operations"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
+@inject IJSRuntime JS
 
 <PageTitle>经营分析</PageTitle>
+<h1 class="mb-2">经营分析</h1>
 
-<ComingSoonPanel Title="经营分析"
-                 Description="利润、费用结构与关键经营指标看板。" />
+<div class="row g-2 mb-3">
+    <div class="col-md-2">
+        <select class="form-select" @bind="_range">
+            <option value="day">本日</option>
+            <option value="week">本周</option>
+            <option value="month">本月</option>
+            <option value="year">本年</option>
+            <option value="all">累计</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" @bind="_groupBy">
+            <option value="market">按市场</option>
+            <option value="customer">按客户</option>
+            <option value="user">按用户</option>
+            <option value="product">按商品</option>
+            <option value="category">按商品类别</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary" @onclick="LoadAsync" disabled="@_busy">查询</button>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-outline-secondary" @onclick="ExportCsv">导出CSV</button>
+    </div>
+</div>
+<div class="row g-2 mb-3">
+    <div class="col-md-2"><input class="form-control" placeholder="yyyy-MM-dd" @bind="_fromDateText" /></div>
+    <div class="col-md-2"><input class="form-control" placeholder="yyyy-MM-dd" @bind="_toDateText" /></div>
+    <div class="col-md-4"><small class="text-muted">填写起止日期时按自定义时间段查询</small></div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead><tr><th>分组</th><th>销售数量</th><th>销售金额</th><th>利润率</th><th>人工成本率</th><th>销售成本率</th></tr></thead>
+        <tbody>
+            @foreach (var r in _rows)
+            {
+                <tr>
+                    <td>@r.GroupKey</td>
+                    <td>@r.SalesQuantity</td>
+                    <td>@r.SalesAmount</td>
+                    <td>@($"{r.ProfitRate:P2}")</td>
+                    <td>@($"{r.LaborCostRate:P2}")</td>
+                    <td>@($"{r.SalesCostRate:P2}")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private bool _busy;
+    private string _range = "month";
+    private string _groupBy = "market";
+    private string? _fromDateText;
+    private string? _toDateText;
+    private List<OperationsAnalysisRowDto> _rows = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        try
+        {
+            DateOnly? from = DateOnly.TryParse(_fromDateText, out var f) ? f : null;
+            DateOnly? to = DateOnly.TryParse(_toDateText, out var t) ? t : null;
+            var resp = await Http.PostAsJsonAsync("api/business/operations-analysis", new OperationsAnalysisQueryDto(_range, from, to, _groupBy));
+            var text = await resp.Content.ReadAsStringAsync();
+            var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<List<OperationsAnalysisRowDto>>>(text, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _rows = env?.Success == true ? env.Data ?? new() : new();
+        }
+        finally { _busy = false; }
+    }
+
+    private void ExportCsv()
+    {
+        var lines = new List<string> { "分组,销售数量,销售金额,利润率,人工成本率,销售成本率" };
+        lines.AddRange(_rows.Select(r => $"{r.GroupKey},{r.SalesQuantity},{r.SalesAmount},{r.ProfitRate},{r.LaborCostRate},{r.SalesCostRate}"));
+        var content = string.Join("\n", lines);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var base64 = Convert.ToBase64String(bytes);
+        var name = $"operations_{DateTime.Now:yyyyMMddHHmmss}.csv";
+        _ = JS.InvokeVoidAsync("eval", $"(function(){{const a=document.createElement('a');a.href='data:text/csv;base64,{base64}';a.download='{name}';a.click();}})();");
+    }
+}

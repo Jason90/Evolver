@@ -32,7 +32,38 @@ public sealed partial class AppDbContext
             var tenantEq = Expression.Equal(tenantProp, tenantIdValue);
             var orgEq = Expression.Equal(orgProp, orgIdValue);
 
-            var body = Expression.AndAlso(tenantEq, orgEq);
+            Expression body = Expression.AndAlso(tenantEq, orgEq);
+            if (entityType.ClrType == typeof(Unit))
+            {
+                var activeProp = Expression.Property(parameter, nameof(Unit.IsActive));
+                body = Expression.AndAlso(body, Expression.Equal(activeProp, Expression.Constant(true)));
+            }
+            else if (entityType.ClrType == typeof(ProductCategory))
+            {
+                var activeProp = Expression.Property(parameter, nameof(ProductCategory.IsActive));
+                body = Expression.AndAlso(body, Expression.Equal(activeProp, Expression.Constant(true)));
+            }
+            else if (entityType.ClrType == typeof(Product))
+            {
+                var activeProp = Expression.Property(parameter, nameof(Product.IsActive));
+                body = Expression.AndAlso(body, Expression.Equal(activeProp, Expression.Constant(true)));
+            }
+            else if (entityType.ClrType == typeof(CustomerCategory))
+            {
+                var activeProp = Expression.Property(parameter, nameof(CustomerCategory.IsActive));
+                body = Expression.AndAlso(body, Expression.Equal(activeProp, Expression.Constant(true)));
+            }
+            else if (entityType.ClrType == typeof(Customer))
+            {
+                var activeProp = Expression.Property(parameter, nameof(Customer.IsActive));
+                body = Expression.AndAlso(body, Expression.Equal(activeProp, Expression.Constant(true)));
+            }
+            else if (entityType.ClrType == typeof(SystemParameter))
+            {
+                var activeProp = Expression.Property(parameter, nameof(SystemParameter.IsActive));
+                body = Expression.AndAlso(body, Expression.Equal(activeProp, Expression.Constant(true)));
+            }
+
             var lambda = Expression.Lambda(body, parameter);
 
             modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
@@ -46,12 +77,12 @@ public sealed partial class AppDbContext
     {
         var parameter = Expression.Parameter(typeof(Tenant), "t");
         var idProp = Expression.Property(parameter, nameof(Tenant.Id));
-        var deletedProp = Expression.Property(parameter, nameof(Tenant.IsDeleted));
+        var activeProp = Expression.Property(parameter, nameof(Tenant.IsActive));
         var tenantValue = Expression.Field(Expression.Constant(this), "_tenant");
         var tenantIdValue = Expression.Property(tenantValue, nameof(ITenantContext.TenantId));
         var idEq = Expression.Equal(idProp, tenantIdValue);
-        var notDeleted = Expression.Equal(deletedProp, Expression.Constant(false));
-        var body = Expression.AndAlso(idEq, notDeleted);
+        var isActive = Expression.Equal(activeProp, Expression.Constant(true));
+        var body = Expression.AndAlso(idEq, isActive);
         modelBuilder.Entity<Tenant>().HasQueryFilter(Expression.Lambda(body, parameter));
     }
 }

@@ -56,7 +56,7 @@ public sealed class RolesController(
 
             .AsNoTracking()
 
-            .Where(r => r.TenantId == tenant.TenantId && !r.IsDeleted)
+            .Where(r => r.TenantId == tenant.TenantId && r.IsActive)
 
             .OrderBy(r => r.Name)
 
@@ -160,7 +160,7 @@ public sealed class RolesController(
 
             .AsNoTracking()
 
-            .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId && !r.IsDeleted, ct);
+            .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId && r.IsActive, ct);
 
         if (role is null)
 
@@ -182,7 +182,7 @@ public sealed class RolesController(
 
         var role = await roleManager.Roles.AsNoTracking()
 
-            .AnyAsync(r => r.Id == roleId && r.TenantId == tenant.TenantId && !r.IsDeleted, ct);
+            .AnyAsync(r => r.Id == roleId && r.TenantId == tenant.TenantId && r.IsActive, ct);
 
         if (!role)
 
@@ -274,7 +274,7 @@ public sealed class RolesController(
 
 
 
-        var role = await roleManager.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId && !r.IsDeleted, ct);
+        var role = await roleManager.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId && r.IsActive, ct);
 
         if (role is null)
 
@@ -320,7 +320,7 @@ public sealed class RolesController(
 
     {
 
-        var role = await roleManager.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId && !r.IsDeleted, ct);
+        var role = await roleManager.Roles.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenant.TenantId && r.IsActive, ct);
 
         if (role is null)
 
@@ -342,7 +342,7 @@ public sealed class RolesController(
 
 
 
-        role.IsDeleted = true;
+        role.IsActive = false;
 
         var upd = await roleManager.UpdateAsync(role);
 
@@ -366,7 +366,7 @@ public sealed class RolesController(
 
     {
 
-        var role = await roleManager.Roles.FirstOrDefaultAsync(r => r.Id == roleId && r.TenantId == tenant.TenantId && !r.IsDeleted, ct);
+        var role = await roleManager.Roles.FirstOrDefaultAsync(r => r.Id == roleId && r.TenantId == tenant.TenantId && r.IsActive, ct);
 
         if (role is null)
 

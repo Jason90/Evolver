@@ -16,13 +16,24 @@ public static class EvolverDataTableInterop
         string schema,
         long? currentUserId)
     {
+        _ = await TrySyncAsync(js, hostId, json, dotNetRef, schema, currentUserId);
+    }
+
+    public static async Task<bool> TrySyncAsync(
+        IJSRuntime js,
+        string hostId,
+        string json,
+        object? dotNetRef,
+        string schema,
+        long? currentUserId)
+    {
         try
         {
-            await js.InvokeVoidAsync("evolverDataTable.sync", hostId, json, dotNetRef, schema, currentUserId);
+            return await js.InvokeAsync<bool>("evolverDataTable.sync", hostId, json, dotNetRef, schema, currentUserId);
         }
         catch (JSDisconnectedException)
         {
-            // WASM 已卸载
+            return false;
         }
     }
 

@@ -1,0 +1,156 @@
+@page "/settings/enum-config"
+@attribute [Authorize]
+@inject HttpClient Http
+
+<PageTitle>枚举配置</PageTitle>
+
+<h1 class="mb-2">枚举配置</h1>
+<p class="text-muted mb-3">维护枚举类型（EnumTypes）与枚举值（EnumValues）。</p>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrWhiteSpace(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+<div class="row g-3">
+    <div class="col-12 col-lg-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>枚举类型</span>
+                <button class="btn btn-sm btn-primary" @onclick="CreateTypeAsync">新增类型</button>
+            </div>
+            <div class="list-group list-group-flush">
+                @if (_types.Count == 0)
+                {
+                    <div class="list-group-item text-muted">暂无类型</div>
+                }
+                else
+                {
+                    @foreach (var t in _types)
+                    {
+                        <button class="list-group-item list-group-item-action @(t.EnumTypeCode == _selectedTypeCode ? "active" : "")"
+                                @onclick="() => SelectTypeAsync(t.EnumTypeCode)">
+                            <div class="fw-semibold">@t.Name</div>
+                            <div class="small">@t.EnumTypeCode</div>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>枚举值 (@(_selectedTypeCode ?? "-"))</span>
+                <button class="btn btn-sm btn-primary" disabled="@string.IsNullOrWhiteSpace(_selectedTypeCode)" @onclick="CreateValueAsync">新增值</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Sort</th>
+                        <th>默认</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @if (_values.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-muted">暂无数据</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var v in _values)
+                        {
+                            <tr>
+                                <td>@v.EnumValueCode</td>
+                                <td>@v.Name</td>
+                                <td>@v.SortNo</td>
+                                <td>@(v.IsDefault ? "是" : "否")</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly List<EnumTypeDto> _types = new();
+    private readonly List<EnumValueDto> _values = new();
+    private string? _selectedTypeCode;
+    private string? _error;
+    private string? _success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadTypesAsync();
+    }
+
+    private async Task ReloadTypesAsync()
+    {
+        _error = null;
+        _success = null;
+        var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<EnumTypeDto>>>("api/enum-config/types");
+        _types.Clear();
+        _types.AddRange(env?.Data ?? []);
+        if (_selectedTypeCode is not null && _types.All(x => x.EnumTypeCode != _selectedTypeCode))
+            _selectedTypeCode = null;
+    }
+
+    private async Task SelectTypeAsync(string typeCode)
+    {
+        _selectedTypeCode = typeCode;
+        await ReloadValuesAsync();
+    }
+
+    private async Task ReloadValuesAsync()
+    {
+        _values.Clear();
+        if (string.IsNullOrWhiteSpace(_selectedTypeCode))
+            return;
+        var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<EnumValueDto>>>($"api/enum-config/values?enumTypeCode={Uri.EscapeDataString(_selectedTypeCode)}");
+        _values.AddRange(env?.Data ?? []);
+    }
+
+    private async Task CreateTypeAsync()
+    {
+        _error = null;
+        _success = null;
+        var code = $"EnumType_{DateTime.Now:HHmmss}";
+        var resp = await Http.PostAsJsonAsync("api/enum-config/types", new UpsertEnumTypeDto(code, code, null, true));
+        if (!resp.IsSuccessStatusCode)
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+            return;
+        }
+        _success = $"已新增类型 {code}";
+        await ReloadTypesAsync();
+    }
+
+    private async Task CreateValueAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedTypeCode))
+            return;
+        _error = null;
+        _success = null;
+        var code = $"Value_{DateTime.Now:HHmmss}";
+        var resp = await Http.PostAsJsonAsync("api/enum-config/values", new UpsertEnumValueDto(_selectedTypeCode, code, code, 0, false, null, true));
+        if (!resp.IsSuccessStatusCode)
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+            return;
+        }
+        _success = $"已新增枚举值 {code}";
+        await ReloadValuesAsync();
+    }
+}
+

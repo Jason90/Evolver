@@ -1,6 +1,536 @@
 @page "/sales/marketing"
+@using System.Globalization
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject HttpClient Http
+@inject IJSRuntime JS
 
 <PageTitle>市场管理</PageTitle>
 
-<ComingSoonPanel Title="市场管理"
-                 Description="线索、活动、渠道与市场投放管理。" />
+<h1 class="mb-2">市场管理</h1>
+<p class="text-muted mb-3">维护市场基础信息（市场名称、租金、地址、电话、网址、备注、是否激活、更新时间、更新人）。删除存在关联时会自动改为停用，并在本列表显示删除线。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+@if (_pane == Pane.List)
+{
+    <EvolverDataTable TableHostId="@MarketTableHostId" Loading="@(_rows is null)">
+        <ToolbarStart>
+            <div class="position-relative">
+                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                    </svg>
+                </span>
+                <label class="visually-hidden" for="market-global-filter">全文检索</label>
+                <input id="market-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
+                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            </div>
+        </ToolbarStart>
+        <ToolbarEnd>
+            <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreate" disabled="@_busy">
+                <i class="bi bi-plus-lg me-1"></i>新增
+            </button>
+            <div @ref="_exportDropdownRoot" class="dropdown position-relative">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                        @onclick="() => _exportMenuOpen = !_exportMenuOpen"
+                        disabled="@(_busy || _rows is null)">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+                @if (_exportMenuOpen)
+                {
+                    <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                    </div>
+                }
+            </div>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="导入 .xlsx，工作表名 Markets">
+                <i class="bi bi-upload me-1"></i>导入
+                <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
+            </label>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+        </ToolbarEnd>
+    </EvolverDataTable>
+}
+else if (_pane == Pane.Create || _pane == Pane.Edit)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回列表</button>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header">@(_pane == Pane.Create ? "新增市场" : "编辑市场")</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">市场名称 <span class="text-danger">*</span></label>
+                    <input class="form-control" @bind="_name" @bind:event="oninput" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">租金</label>
+                    <input class="form-control" type="number" step="0.01" @bind="_rentAmountText" @bind:event="oninput" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">电话</label>
+                    <input class="form-control" @bind="_phone" @bind:event="oninput" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">网址</label>
+                    <input class="form-control" @bind="_website" @bind:event="oninput" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">地址</label>
+                    <input class="form-control" @bind="_address" @bind:event="oninput" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">备注</label>
+                    <textarea class="form-control" rows="3" @bind="_remark" @bind:event="oninput"></textarea>
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="market-active" @bind="_isActive" />
+                        <label class="form-check-label" for="market-active">是否激活</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="SaveAsync" disabled="@(_busy || !IsFormValid())">保存</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+else if (_pane == Pane.DeleteConfirm && _deleteId is not null)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回列表</button>
+    </div>
+
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">确认删除</div>
+        <div class="card-body">
+            <p class="mb-3">确定删除市场 <strong>@_deleteName</strong> 吗？如果存在外键关联将自动改为停用。</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum Pane { List, Create, Edit, DeleteConfirm }
+    private const string MarketTableHostId = "evolver-market-tabulator-host";
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions TabulatorJsonOpts = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    private string? _error;
+    private string? _success;
+    private bool _busy;
+    private Pane _pane = Pane.List;
+
+    private List<MarketListItemDto>? _rows;
+    private string _globalFilter = "";
+    private int _dataTick;
+    private int _tabulatorSyncedTick = -1;
+    private DotNetObjectReference<Marketing>? _dotNetRef;
+
+    private bool _exportMenuOpen;
+    private bool _exportClickOutsideRegistered;
+    private ElementReference _exportDropdownRoot;
+
+    private long? _editId;
+    private string _name = "";
+    private string _rentAmountText = "0";
+    private string? _address;
+    private string? _phone;
+    private string? _website;
+    private string? _remark;
+    private bool _isActive = true;
+
+    private long? _deleteId;
+    private string _deleteName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAllAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pane != Pane.List)
+        {
+            if (_tabulatorSyncedTick >= 0)
+            {
+                await DestroyTabulatorAsync();
+                _tabulatorSyncedTick = -1;
+            }
+            return;
+        }
+
+        if (_exportMenuOpen && !_exportClickOutsideRegistered)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync(
+                    "evolverUi.startExportMenuClickOutside",
+                    _exportDropdownRoot,
+                    _dotNetRef,
+                    nameof(OnExportMenuClickOutside));
+                _exportClickOutsideRegistered = true;
+            }
+            catch (JSDisconnectedException) { }
+        }
+        else if (!_exportMenuOpen && _exportClickOutsideRegistered)
+        {
+            try { await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside"); } catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        if (_rows is null || _tabulatorSyncedTick == _dataTick)
+            return;
+
+        await SyncTableAsync();
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null;
+        _success = null;
+        _globalFilter = "";
+        _exportMenuOpen = false;
+        await LoadRowsAsync();
+    }
+
+    private async Task LoadRowsAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<MarketListItemDto>>>("api/markets");
+            _rows = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _rows = new();
+        }
+        finally
+        {
+            _dataTick++;
+        }
+    }
+
+    private async Task SyncTableAsync()
+    {
+        if (_rows is null)
+            return;
+
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+        var json = JsonSerializer.Serialize(_rows.Select(x => new
+        {
+            id = x.Id,
+            name = x.Name,
+            rentAmountText = x.RentAmount.ToString("0.##", CultureInfo.InvariantCulture),
+            address = x.Address ?? "-",
+            phone = x.Phone ?? "-",
+            website = x.Website ?? "-",
+            remark = x.Remark ?? "-",
+            isActive = x.IsActive,
+            statusText = x.IsActive ? "是" : "否",
+            updateTimeText = x.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "-",
+            updateByUserName = x.UpdateByUserName ?? "-"
+        }).ToList(), TabulatorJsonOpts);
+
+        await EvolverDataTableInterop.SyncAsync(JS, MarketTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Markets, null);
+        _tabulatorSyncedTick = _dataTick;
+        await EvolverDataTableInterop.SetGlobalFilterAsync(JS, MarketTableHostId, _globalFilter);
+    }
+
+    private void OpenCreate()
+    {
+        _pane = Pane.Create;
+        _editId = null;
+        _name = "";
+        _rentAmountText = "0";
+        _address = null;
+        _phone = null;
+        _website = null;
+        _remark = null;
+        _isActive = true;
+        _error = null;
+        _success = null;
+    }
+
+    private async Task OpenEditAsync(long id)
+    {
+        _pane = Pane.Edit;
+        _editId = id;
+        _error = null;
+        _success = null;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<MarketListItemDto>>($"api/markets/{id}");
+            if (env?.Success != true || env.Data is null)
+            {
+                _error = env?.Message ?? "加载详情失败。";
+                await CancelToListAsync();
+                return;
+            }
+
+            _name = env.Data.Name;
+            _rentAmountText = env.Data.RentAmount.ToString("0.##", CultureInfo.InvariantCulture);
+            _address = env.Data.Address;
+            _phone = env.Data.Phone;
+            _website = env.Data.Website;
+            _remark = env.Data.Remark;
+            _isActive = env.Data.IsActive;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await CancelToListAsync();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_busy || !IsFormValid())
+            return;
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var dto = new UpsertMarketDto(
+                _name.Trim(),
+                ParseRentAmount(),
+                Normalize(_address),
+                Normalize(_phone),
+                Normalize(_website),
+                Normalize(_remark),
+                _isActive);
+            HttpResponseMessage resp;
+            if (_pane == Pane.Create)
+                resp = await Http.PostAsJsonAsync("api/markets", dto);
+            else
+                resp = await Http.PutAsJsonAsync($"api/markets/{_editId}", dto);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await ReadErrorAsync(resp);
+                return;
+            }
+
+            _success = _pane == Pane.Create ? "新增成功。" : "修改成功。";
+            await CancelToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OpenDelete(long id)
+    {
+        _deleteId = id;
+        _deleteName = _rows?.FirstOrDefault(x => x.Id == id)?.Name ?? $"#{id}";
+        _pane = Pane.DeleteConfirm;
+        _error = null;
+        _success = null;
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy || _deleteId is not { } id)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/markets/{id}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await ReadErrorAsync(resp);
+                return;
+            }
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                var txt = await resp.Content.ReadAsStringAsync();
+                _success = string.IsNullOrWhiteSpace(txt) ? "存在关联数据，已改为停用。" : txt.Trim('"');
+            }
+            else
+            {
+                _success = "已删除。";
+            }
+
+            await CancelToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ImportExcelAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy || e.FileCount == 0)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20_000_000);
+            using var content = new MultipartFormDataContent();
+            content.Add(new StreamContent(stream), "file", e.File.Name);
+            var resp = await Http.PostAsync("api/markets/import", content);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await ReadErrorAsync(resp);
+                return;
+            }
+
+            var text = await resp.Content.ReadAsStringAsync();
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<MarketImportResultDto>>(text, JsonOpts);
+            if (env?.Success == true && env.Data is { } d)
+                _success = $"导入完成：新建 {d.Created}，更新 {d.Updated}，跳过 {d.Skipped}。";
+            else
+                _error = env?.Message ?? "导入失败。";
+
+            await LoadRowsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ExportAndCloseAsync(string format)
+    {
+        _exportMenuOpen = false;
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            await EvolverDataTableInterop.DownloadAsync(JS, MarketTableHostId, format);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private bool IsFormValid() => !string.IsNullOrWhiteSpace(_name);
+
+    private decimal ParseRentAmount()
+    {
+        if (decimal.TryParse(_rentAmountText, NumberStyles.Number, CultureInfo.InvariantCulture, out var d)
+            || decimal.TryParse(_rentAmountText, NumberStyles.Number, CultureInfo.CurrentCulture, out d))
+            return d < 0 ? 0 : d;
+        return 0;
+    }
+
+    private static string? Normalize(string? input)
+    {
+        var t = input?.Trim();
+        return string.IsNullOrWhiteSpace(t) ? null : t;
+    }
+
+    private async Task OnGlobalFilterInput(ChangeEventArgs e)
+    {
+        _globalFilter = e.Value?.ToString() ?? "";
+        await EvolverDataTableInterop.SetGlobalFilterAsync(JS, MarketTableHostId, _globalFilter);
+    }
+
+    [JSInvokable]
+    public async Task OnMarketTableEdit(long id)
+    {
+        await OpenEditAsync(id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnMarketTableDelete(long id)
+    {
+        OpenDelete(id);
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnExportMenuClickOutside()
+    {
+        _exportMenuOpen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CancelToListAsync()
+    {
+        _pane = Pane.List;
+        _deleteId = null;
+        _deleteName = "";
+        await LoadRowsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<string> ReadErrorAsync(HttpResponseMessage resp)
+    {
+        var text = await resp.Content.ReadAsStringAsync();
+        if (string.IsNullOrWhiteSpace(text))
+            return $"请求失败（{(int)resp.StatusCode}）";
+        return text.Length > 400 ? text[..400] + "..." : text;
+    }
+
+    private async Task DestroyTabulatorAsync()
+    {
+        try { await EvolverDataTableInterop.DestroyAsync(JS, MarketTableHostId); } catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_exportClickOutsideRegistered)
+        {
+            try { await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside"); } catch (JSDisconnectedException) { }
+        }
+
+        await DestroyTabulatorAsync();
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}

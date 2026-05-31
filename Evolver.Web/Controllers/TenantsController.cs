@@ -40,12 +40,16 @@ public sealed class TenantsController(
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TenantListItemDto>>> List(CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<TenantListItemDto>>> List(
+        [FromQuery] string? status,
+        [FromQuery] DateTime? expireFrom,
+        [FromQuery] DateTime? expireTo,
+        CancellationToken ct)
     {
         if (!await IsPlatformAdminAsync())
             return Forbid();
 
-        var rows = await provisioning.ListAllAsync(ct);
+        var rows = await provisioning.ListAllAsync(status, expireFrom, expireTo, ct);
         return Ok(rows);
     }
 
@@ -57,7 +61,7 @@ public sealed class TenantsController(
 
         try
         {
-            await provisioning.UpdateTenantNameAsync(id, dto.Name, ct);
+            await provisioning.UpdateTenantAsync(id, dto, ct);
             return NoContent();
         }
         catch (KeyNotFoundException)

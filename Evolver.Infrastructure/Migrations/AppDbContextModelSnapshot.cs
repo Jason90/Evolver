@@ -125,10 +125,10 @@ namespace Evolver.Infrastructure.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IsDeleted")
+                    b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
@@ -157,7 +157,7 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "NormalizedName")
                         .IsUnique()
-                        .HasFilter("IsDeleted = 0");
+                        .HasFilter("IsActive = 1");
 
                     b.ToTable("AspNetRoles", (string)null);
                 });
@@ -206,6 +206,9 @@ namespace Evolver.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PhoneNumber")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("PhoneNumberConfirmed")
@@ -340,14 +343,29 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateOnly?>("Birthday")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("CustomerCategoryRefId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("CustomerType")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Email")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Gender")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("JobTitle")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MemberNo")
@@ -363,6 +381,9 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<string>("Phone")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("TenantId")
                         .HasColumnType("INTEGER");
 
@@ -374,10 +395,61 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CustomerCategoryRefId");
+
                     b.HasIndex("TenantId", "OrgId", "Code")
                         .IsUnique();
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.CustomerCategory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("CategoryCode")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpireAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrgId", "CategoryCode")
+                        .IsUnique();
+
+                    b.ToTable("CustomerCategories");
                 });
 
             modelBuilder.Entity("Evolver.Core.Entities.DataDictionaryItem", b =>
@@ -471,6 +543,120 @@ namespace Evolver.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("DataDictionaryTypes");
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.EnumTypeConfig", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Description");
+
+                    b.Property<string>("EnumTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("EnumTypeCode");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("IsActive");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Name");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("UpdateBy");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("UpdateTime");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrgId", "EnumTypeCode")
+                        .IsUnique();
+
+                    b.ToTable("EnumTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.EnumValueConfig", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Description");
+
+                    b.Property<string>("EnumTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("EnumTypeCode");
+
+                    b.Property<string>("EnumValueCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("EnumValueCode");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("IsActive");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("IsDefault");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Name");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SortNo")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("SortNo");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("UpdateBy");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("UpdateTime");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrgId", "EnumTypeCode", "EnumValueCode")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "OrgId", "EnumTypeCode", "SortNo");
+
+                    b.ToTable("EnumValues", (string)null);
                 });
 
             modelBuilder.Entity("Evolver.Core.Entities.InventorySnapshot", b =>
@@ -581,12 +767,27 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Address")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("RentAmount")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("TenantId")
                         .HasColumnType("INTEGER");
@@ -595,6 +796,9 @@ namespace Evolver.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Website")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -904,6 +1108,9 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -1012,11 +1219,23 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<decimal>("AlertStock")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Barcode")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Brand")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<decimal?>("CostAmount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Model")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -1028,6 +1247,9 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.Property<long?>("ProductCategoryId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal?>("SuggestedPrice")
                         .HasColumnType("TEXT");
@@ -1041,6 +1263,9 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<decimal?>("UnitCost")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("UnitId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("TEXT");
 
@@ -1053,6 +1278,8 @@ namespace Evolver.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProductCategoryId");
+
+                    b.HasIndex("UnitId");
 
                     b.HasIndex("TenantId", "Code")
                         .IsUnique();
@@ -1072,6 +1299,9 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1613,8 +1843,8 @@ namespace Evolver.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ContactPhone")
-                        .HasColumnType("TEXT");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1623,7 +1853,60 @@ namespace Evolver.Infrastructure.Migrations
                     b.Property<int>("OrgId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("SupplierType")
+                    b.Property<string>("Phone")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Website")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrgId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("Suppliers");
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.SystemParameter", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsSystemBuiltIn")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ParamKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ParamValue")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Remark")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("TenantId")
@@ -1637,10 +1920,10 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "OrgId", "Code")
+                    b.HasIndex("TenantId", "OrgId", "ParamKey")
                         .IsUnique();
 
-                    b.ToTable("Suppliers");
+                    b.ToTable("SystemParameters");
                 });
 
             modelBuilder.Entity("Evolver.Core.Entities.Tenant", b =>
@@ -1649,7 +1932,7 @@ namespace Evolver.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("IsDeleted")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -1672,9 +1955,46 @@ namespace Evolver.Infrastructure.Migrations
 
                     b.HasIndex("Name")
                         .IsUnique()
-                        .HasFilter("IsDeleted = 0");
+                        .HasFilter("IsActive = 1");
 
                     b.ToTable("Tenants");
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.Unit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrgId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UpdateBy")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OrgId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("Units");
                 });
 
             modelBuilder.Entity("Evolver.Core.Entities.UserOrganization", b =>
@@ -1876,6 +2196,28 @@ namespace Evolver.Infrastructure.Migrations
                     b.Navigation("ComponentProduct");
                 });
 
+            modelBuilder.Entity("Evolver.Core.Entities.Customer", b =>
+                {
+                    b.HasOne("Evolver.Core.Entities.CustomerCategory", "CustomerCategory")
+                        .WithMany()
+                        .HasForeignKey("CustomerCategoryRefId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CustomerCategory");
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.EnumValueConfig", b =>
+                {
+                    b.HasOne("Evolver.Core.Entities.EnumTypeConfig", "EnumType")
+                        .WithMany("Values")
+                        .HasForeignKey("TenantId", "OrgId", "EnumTypeCode")
+                        .HasPrincipalKey("TenantId", "OrgId", "EnumTypeCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EnumType");
+                });
+
             modelBuilder.Entity("Evolver.Core.Entities.InventorySnapshot", b =>
                 {
                     b.HasOne("Evolver.Core.Entities.Product", "Product")
@@ -2010,7 +2352,14 @@ namespace Evolver.Infrastructure.Migrations
                         .HasForeignKey("ProductCategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Evolver.Core.Entities.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Category");
+
+                    b.Navigation("Unit");
                 });
 
             modelBuilder.Entity("Evolver.Core.Entities.ProductCategory", b =>
@@ -2269,6 +2618,11 @@ namespace Evolver.Infrastructure.Migrations
             modelBuilder.Entity("Evolver.Core.Entities.BomHeader", b =>
                 {
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Evolver.Core.Entities.EnumTypeConfig", b =>
+                {
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("Evolver.Core.Entities.ProductionOrder", b =>

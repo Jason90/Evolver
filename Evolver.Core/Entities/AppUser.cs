@@ -9,6 +9,7 @@ public sealed class AppUser : IdentityUser<long>
 
     public int TenantId { get; set; } = 1;
     public int OrgId { get; set; } = 1;
+    public string? Remark { get; set; }
 
     public int? UpdateBy { get; set; }
     public DateTime? UpdateTime { get; set; }

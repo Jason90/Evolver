@@ -1,0 +1,649 @@
+@page "/product-categories"
+@attribute [Authorize]
+@using System.Globalization
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>商品类别</PageTitle>
+
+<h1 class="mb-2">商品类别</h1>
+<p class="text-muted mb-3">商品管理 · 类别树维护（树形列表、全文检索、导入导出、新增子级、删除冲突自动停用）。</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" @onclick="() => _error = null"></button>
+    </div>
+}
+
+@if (_success is not null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @_success
+        <button type="button" class="btn-close" @onclick="() => _success = null"></button>
+    </div>
+}
+
+@if (_pane == Pane.List)
+{
+    <EvolverDataTable TableHostId="@TableHostId" Loading="@(_tree is null)">
+        <ToolbarStart>
+            <div class="position-relative">
+                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                    </svg>
+                </span>
+                <label class="visually-hidden" for="category-global-filter">全文检索</label>
+                <input id="category-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input"
+                       placeholder="全文检索（类别编号、类别名称、状态、更新时间、更新人）"
+                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            </div>
+        </ToolbarStart>
+        <ToolbarEnd>
+            <div @ref="_exportDropdownRoot" class="dropdown position-relative">
+                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                        @onclick="() => _exportMenuOpen = !_exportMenuOpen"
+                        disabled="@(_busy || _tree is null)">
+                    <i class="bi bi-download me-1"></i>导出
+                </button>
+                @if (_exportMenuOpen)
+                {
+                    <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                    </div>
+                }
+            </div>
+            <label class="btn btn-outline-secondary btn-sm mb-0" title="导入 .xlsx，工作表名 ProductCategories">
+                <i class="bi bi-upload me-1"></i>导入
+                <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
+            </label>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ExpandAllAsync" disabled="@(_busy || _tree is null)">
+                <i class="bi bi-arrows-expand me-1"></i>展开全部
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CollapseAllAsync" disabled="@(_busy || _tree is null)">
+                <i class="bi bi-arrows-collapse me-1"></i>折叠全部
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+                <i class="bi bi-arrow-clockwise me-1"></i>刷新
+            </button>
+        </ToolbarEnd>
+    </EvolverDataTable>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-header">新增类别</div>
+        <div class="card-body row g-2">
+            <div class="col-md-3">
+                <label class="form-label">类别编号 <span class="text-danger">*</span></label>
+                <input @ref="_createCodeInput" class="form-control" @bind="_createCode" @bind:event="oninput" disabled="@_busy" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">类别名称 <span class="text-danger">*</span></label>
+                <input class="form-control" @bind="_createName" @bind:event="oninput" disabled="@_busy" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">父级 Id（空=根）</label>
+                <input class="form-control" @bind="_createParentIdStr" @bind:event="oninput" disabled="@_busy" placeholder="点击“新增子级”可自动填入" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">是否激活</label>
+                <select class="form-select" @bind="_createIsActive" disabled="@_busy">
+                    <option value="true">是</option>
+                    <option value="false">否</option>
+                </select>
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-primary w-100" @onclick="CreateAsync" disabled="@_busy">保存</button>
+            </div>
+        </div>
+    </div>
+}
+else if (_pane == Pane.Edit && _editId is not null)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回类别树</button>
+    </div>
+
+    @if (_editLoading)
+    {
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                <p class="mt-3 mb-0 text-muted">正在加载…</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm" style="max-width:40rem">
+            <div class="card-header">编辑类别 — Id @_editId</div>
+            <div class="card-body row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">类别编号 <span class="text-danger">*</span></label>
+                    <input class="form-control" @bind="_editCode" @bind:event="oninput" disabled="@_busy" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">类别名称 <span class="text-danger">*</span></label>
+                    <input class="form-control" @bind="_editName" @bind:event="oninput" disabled="@_busy" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">父级 Id（空=根）</label>
+                    <input class="form-control" @bind="_editParentIdStr" @bind:event="oninput" disabled="@_busy" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">是否激活</label>
+                    <select class="form-select" @bind="_editIsActive" disabled="@_busy">
+                        <option value="true">是</option>
+                        <option value="false">否</option>
+                    </select>
+                </div>
+                <div class="col-12 mt-3 d-flex gap-2">
+                    <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@_busy">保存</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+else if (_pane == Pane.DeleteConfirm && _deleteId is not null)
+{
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回类别树</button>
+    </div>
+
+    <div class="card border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">确认删除</div>
+        <div class="card-body">
+            <p class="mb-3">确定删除类别 <strong>@_deleteLabel</strong>（Id <strong>@_deleteId</strong>）？如存在关联数据将自动停用。</p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum Pane { List, Edit, DeleteConfirm }
+    private const string TableHostId = "evolver-product-category-tree-host";
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions TreeJsonOpts = new()
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = null
+    };
+
+    private string? _error;
+    private string? _success;
+    private bool _busy;
+    private Pane _pane = Pane.List;
+
+    private List<ProductCategoryTreeNodeDto>? _tree;
+    private string _globalFilter = "";
+    private int _dataTick;
+    private int _tabulatorSyncedTick = -1;
+    private DotNetObjectReference<ProductCategoryManagement>? _dotNetRef;
+
+    private bool _exportMenuOpen;
+    private bool _exportClickOutsideRegistered;
+    private ElementReference _exportDropdownRoot;
+    private ElementReference _createCodeInput;
+
+    private string _createCode = "";
+    private string _createName = "";
+    private string? _createParentIdStr;
+    private bool _createIsActive = true;
+
+    private long? _editId;
+    private bool _editLoading;
+    private string _editCode = "";
+    private string _editName = "";
+    private string? _editParentIdStr;
+    private bool _editIsActive = true;
+
+    private long? _deleteId;
+    private string _deleteLabel = "";
+
+    protected override async Task OnInitializedAsync() => await ReloadAllAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pane != Pane.List)
+        {
+            if (_tabulatorSyncedTick >= 0)
+            {
+                await DestroyTableAsync();
+                _tabulatorSyncedTick = -1;
+            }
+            return;
+        }
+
+        if (_exportMenuOpen && !_exportClickOutsideRegistered)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("evolverUi.startExportMenuClickOutside", _exportDropdownRoot, _dotNetRef, nameof(OnExportMenuClickOutside));
+                _exportClickOutsideRegistered = true;
+            }
+            catch (JSDisconnectedException) { }
+        }
+        else if (!_exportMenuOpen && _exportClickOutsideRegistered)
+        {
+            try { await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside"); } catch (JSDisconnectedException) { }
+            _exportClickOutsideRegistered = false;
+        }
+
+        if (_tree is null || _tabulatorSyncedTick == _dataTick)
+            return;
+
+        await SyncTreeToDomAsync();
+    }
+
+    private async Task ReloadAllAsync()
+    {
+        _error = null;
+        _success = null;
+        _globalFilter = "";
+        _exportMenuOpen = false;
+
+        if (_pane == Pane.List && _tabulatorSyncedTick >= 0)
+        {
+            await DestroyTableAsync();
+            _tabulatorSyncedTick = -1;
+        }
+
+        await LoadTreeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadTreeAsync()
+    {
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<ProductCategoryTreeNodeDto>>>("api/product-categories/tree");
+            _tree = env?.Success == true ? env.Data ?? new() : new();
+            if (env?.Success == false)
+                _error = env.Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _tree = new();
+        }
+        finally
+        {
+            _dataTick++;
+        }
+    }
+
+    private static Dictionary<string, object?> ToTableNode(ProductCategoryTreeNodeDto n)
+    {
+        var d = new Dictionary<string, object?>
+        {
+            ["id"] = n.Id,
+            ["parentId"] = n.ParentId,
+            ["code"] = n.Code,
+            ["name"] = n.Name,
+            ["isActive"] = n.IsActive,
+            ["statusText"] = n.IsActive ? "是" : "否",
+            ["updateTimeText"] = n.UpdateTime?.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) ?? "-",
+            ["updateByUserName"] = n.UpdateByUserName ?? "-"
+        };
+        if (n.Children.Count > 0)
+            d["_children"] = n.Children.Select(ToTableNode).ToList();
+        return d;
+    }
+
+    private async Task SyncTreeToDomAsync()
+    {
+        if (_tree is null)
+            return;
+        try
+        {
+            _dotNetRef ??= DotNetObjectReference.Create(this);
+            var rows = _tree.Select(ToTableNode).ToList();
+            var json = JsonSerializer.Serialize(rows, TreeJsonOpts);
+            await EvolverDataTableInterop.SyncAsync(JS, TableHostId, json, _dotNetRef, EvolverDataTableSchemas.ProductCategories, null);
+            _tabulatorSyncedTick = _dataTick;
+            await ApplyGlobalFilterJsAsync();
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task DestroyTableAsync()
+    {
+        try { await EvolverDataTableInterop.DestroyAsync(JS, TableHostId); }
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task ApplyGlobalFilterJsAsync()
+    {
+        try { await EvolverDataTableInterop.SetGlobalFilterAsync(JS, TableHostId, _globalFilter); }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task OnGlobalFilterInput(ChangeEventArgs e)
+    {
+        _globalFilter = e.Value?.ToString() ?? "";
+        await ApplyGlobalFilterJsAsync();
+    }
+
+    private async Task ExpandAllAsync()
+    {
+        if (_busy || _tree is null) return;
+        _busy = true;
+        try { await EvolverDataTableInterop.ExpandTreeAllAsync(JS, TableHostId); }
+        finally { _busy = false; }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CollapseAllAsync()
+    {
+        if (_busy || _tree is null) return;
+        _busy = true;
+        try { await EvolverDataTableInterop.CollapseTreeAllAsync(JS, TableHostId); }
+        finally { _busy = false; }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ExportAndCloseAsync(string format)
+    {
+        _exportMenuOpen = false;
+        if (_busy) return;
+        _busy = true;
+        try { await EvolverDataTableInterop.DownloadAsync(JS, TableHostId, format); }
+        finally { _busy = false; }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ImportExcelAsync(InputFileChangeEventArgs e)
+    {
+        if (_busy || e.FileCount == 0)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20_000_000);
+            using var content = new MultipartFormDataContent();
+            content.Add(new StreamContent(stream), "file", e.File.Name);
+            var resp = await Http.PostAsync("api/product-categories/import", content);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<ProductCategoryImportResultDto>>(text, JsonOpts);
+            if (env?.Success == true && env.Data is { } d)
+                _success = $"导入完成：新建 {d.Created}，更新 {d.Updated}，跳过 {d.Skipped}。";
+            else
+                _error = env?.Message ?? "导入失败。";
+
+            await ReloadTreeForListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnProductCategoryTableEdit(long id)
+    {
+        await OpenEditAsync(id);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnProductCategoryTableAddChild(long id, string name)
+    {
+        _createParentIdStr = id.ToString();
+        _error = null;
+        _success = null;
+        await InvokeAsync(StateHasChanged);
+        try { await _createCodeInput.FocusAsync(); } catch { }
+    }
+
+    [JSInvokable]
+    public async Task OnProductCategoryTableDelete(long id, string name)
+    {
+        _deleteId = id;
+        _deleteLabel = string.IsNullOrWhiteSpace(name) ? $"Id {id}" : name;
+        _pane = Pane.DeleteConfirm;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnExportMenuClickOutside()
+    {
+        _exportMenuOpen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CreateAsync()
+    {
+        if (_busy) return;
+        var code = _createCode.Trim();
+        var name = _createName.Trim();
+        if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(name))
+        {
+            _error = "请输入类别编号和类别名称。";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            long? parentId = null;
+            if (!string.IsNullOrWhiteSpace(_createParentIdStr) && long.TryParse(_createParentIdStr, out var pid))
+                parentId = pid;
+            var dto = new CreateProductCategoryDto(code, name, parentId, _createIsActive);
+            var resp = await Http.PostAsJsonAsync("api/product-categories", dto);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = "类别已创建。";
+            _createCode = "";
+            _createName = "";
+            _createParentIdStr = null;
+            _createIsActive = true;
+            await ReloadTreeForListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OpenEditAsync(long id)
+    {
+        _pane = Pane.Edit;
+        _editId = id;
+        _editLoading = true;
+        _error = null;
+        _success = null;
+        await InvokeAsync(StateHasChanged);
+
+        _busy = true;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<ProductCategoryDto>>($"api/product-categories/{id}");
+            if (env?.Success != true || env.Data is null)
+            {
+                _error = env?.Message ?? "无法加载类别。";
+                await CancelToListAsync();
+                return;
+            }
+
+            _editCode = env.Data.Code;
+            _editName = env.Data.Name;
+            _editParentIdStr = env.Data.ParentId?.ToString();
+            _editIsActive = env.Data.IsActive;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            await CancelToListAsync();
+        }
+        finally
+        {
+            _editLoading = false;
+            _busy = false;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_busy || _editId is not { } id) return;
+        if (string.IsNullOrWhiteSpace(_editCode) || string.IsNullOrWhiteSpace(_editName))
+        {
+            _error = "请输入类别编号和类别名称。";
+            return;
+        }
+
+        long? parentId = null;
+        if (!string.IsNullOrWhiteSpace(_editParentIdStr))
+        {
+            if (!long.TryParse(_editParentIdStr, out var pid))
+            {
+                _error = "父级 Id 格式无效。";
+                return;
+            }
+            parentId = pid;
+        }
+
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var dto = new UpdateProductCategoryDto(_editCode.Trim(), _editName.Trim(), parentId, _editIsActive);
+            var resp = await Http.PutAsJsonAsync($"api/product-categories/{id}", dto);
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = "已保存。";
+            await CancelToListAsync();
+            await ReloadTreeForListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteConfirmedAsync()
+    {
+        if (_busy || _deleteId is not { } id)
+            return;
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"api/product-categories/{id}");
+            var text = await resp.Content.ReadAsStringAsync();
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(text);
+                return;
+            }
+
+            _success = resp.StatusCode == System.Net.HttpStatusCode.OK
+                ? (string.IsNullOrWhiteSpace(text) ? "存在关联数据，已自动停用。" : text.Trim('"'))
+                : "已删除。";
+            await CancelToListAsync();
+            await ReloadTreeForListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReloadTreeForListAsync()
+    {
+        await DestroyTableAsync();
+        _tabulatorSyncedTick = -1;
+        await LoadTreeAsync();
+        await InvokeAsync(StateHasChanged);
+        if (_pane == Pane.List && _tree is not null)
+            await SyncTreeToDomAsync();
+    }
+
+    private async Task CancelToListAsync()
+    {
+        _pane = Pane.List;
+        _editId = null;
+        _editLoading = false;
+        _deleteId = null;
+        _deleteLabel = "";
+        await LoadTreeAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string ReadErrorText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "请求失败。";
+        try
+        {
+            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<JsonElement>>(text, JsonOpts);
+            if (!string.IsNullOrEmpty(env?.Message))
+                return env.Message!;
+        }
+        catch { }
+
+        return text.Length > 400 ? text[..400] + "…" : text;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_exportClickOutsideRegistered)
+        {
+            try { await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside"); } catch (JSDisconnectedException) { }
+        }
+        await DestroyTableAsync();
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}

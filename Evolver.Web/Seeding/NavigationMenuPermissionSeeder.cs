@@ -1,5 +1,6 @@
 using Evolver.Core.Entities;
 using Evolver.Infrastructure.Persistence;
+using Evolver.Web.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace Evolver.Web.Seeding;
@@ -29,13 +30,17 @@ public static class NavigationMenuPermissionSeeder
             new("nav:system", "nav:system:users", "用户管理", PermissionType.Menu, 30, "settings/users", "Pages/Settings/UserManagement.razor"),
             new("nav:system", "nav:system:roles", "角色管理", PermissionType.Menu, 40, "settings/roles", "Pages/Settings/RoleManagement.razor"),
             new("nav:system", "nav:system:permissions", "菜单权限", PermissionType.Menu, 50, "settings/permissions", "Pages/Settings/PermissionManagement.razor"),
-            new("nav:system", "nav:system:dictionary", "字典管理", PermissionType.Menu, 60, "settings/data-dictionary", "Pages/Settings/DataDictionaryManagement.razor"),
+            new("nav:system", "nav:system:dictionary", "数据字典", PermissionType.Menu, 60, "settings/data-dictionary", "Pages/Settings/DataDictionaryManagement.razor"),
+            new("nav:system", "nav:system:enum-config", "枚举配置", PermissionType.Menu, 65, "settings/enum-config", "Pages/Settings/EnumConfigManagement.razor"),
             new("nav:system", "nav:system:parameters", "参数设置", PermissionType.Menu, 70, "settings/parameters", "Pages/Settings/ApplicationParameters.razor"),
+            new("nav:system", "nav:system:units", "单位维护", PermissionType.Menu, 80, "settings/units", "Pages/Settings/UnitManagement.razor"),
             new(null, "nav:customer", "客户管理", PermissionType.Directory, 30, null, null),
-            new("nav:customer", "nav:customer:customers", "客户信息", PermissionType.Menu, 10, "customers", "Pages/Customers.razor"),
+            new("nav:customer", "nav:customer:categories", "客户类别", PermissionType.Menu, 10, "customer-categories", "Pages/CustomerCategoryManagement.razor"),
+            new("nav:customer", "nav:customer:customers", "客户信息", PermissionType.Menu, 20, "customers", "Pages/Customers.razor"),
             new(null, "nav:product", "商品管理", PermissionType.Directory, 40, null, null),
             new("nav:product", "nav:product:items", "商品信息", PermissionType.Menu, 10, "products", "Pages/Products.razor"),
             new("nav:product", "nav:product:bom", "物料清单", PermissionType.Menu, 20, "product-master", "Pages/ProductMaster.razor"),
+            new("nav:product", "nav:product:categories", "商品类别", PermissionType.Menu, 30, "product-categories", "Pages/ProductCategoryManagement.razor"),
             new(null, "nav:procurement", "采购管理", PermissionType.Directory, 50, null, null),
             new("nav:procurement", "nav:procurement:suppliers", "供应商信息", PermissionType.Menu, 10, "procurement/suppliers", "Pages/Purchasing/SupplierDirectory.razor"),
             new("nav:procurement", "nav:procurement:purchase-orders", "采购单", PermissionType.Menu, 20, "procurement/purchase-orders", "Pages/Purchasing/PurchaseOrders.razor"),
@@ -78,6 +83,10 @@ public static class NavigationMenuPermissionSeeder
                 rows.Add(new SeedRow(m.Code, $"{m.Code}:{suffix}", label, PermissionType.UiButton, o, null, null));
             }
         }
+
+        // 用户管理扩展按钮权限
+        rows.Add(new SeedRow("nav:system:users", NavSystemSettingsPermissionCodes.Users.ResetPassword, "重置密码", PermissionType.UiButton, 80, null, null));
+        rows.Add(new SeedRow("nav:system:users", NavSystemSettingsPermissionCodes.Users.MoveDepartment, "移动组织", PermissionType.UiButton, 90, null, null));
 
         return rows;
     }

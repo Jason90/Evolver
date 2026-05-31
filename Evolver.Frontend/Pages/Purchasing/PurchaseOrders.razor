@@ -1,6 +1,112 @@
 @page "/procurement/purchase-orders"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
 
 <PageTitle>采购单</PageTitle>
+<h1 class="mb-2">采购单（自动备货）</h1>
+@if (!string.IsNullOrWhiteSpace(_message))
+{
+    <div class="alert alert-info">@_message</div>
+}
 
-<ComingSoonPanel Title="采购单"
-                 Description="请购、采购订单、到货与入库协同。" />
+<div class="card mb-3">
+    <div class="card-header">根据 BOM 缺口一键生成采购单（格式：商品Id,商品编码,商品名,当前库存,需求,采购量,单价）</div>
+    <div class="card-body">
+        <textarea class="form-control mb-2" rows="4" @bind="_input"></textarea>
+        <button class="btn btn-primary" @onclick="CreateAsync" disabled="@_busy">一键生成采购单</button>
+    </div>
+</div>
+<div class="card mb-3">
+    <div class="card-header">部分收货模板（可选，格式：商品Id,收货数量；用于“一键收货入库”时优先按此模板收货）</div>
+    <div class="card-body">
+        <textarea class="form-control" rows="3" @bind="_receiveInput"></textarea>
+    </div>
+</div>
+
+<button class="btn btn-outline-secondary btn-sm mb-2" @onclick="LoadAsync" disabled="@_busy">刷新列表</button>
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead><tr><th>采购单号</th><th>供应商</th><th>状态</th><th>日期</th><th>金额</th><th>操作</th></tr></thead>
+        <tbody>
+            @foreach (var r in _rows)
+            {
+                <tr>
+                    <td>@r.OrderNo</td><td>@r.SupplierName</td><td>@r.Status</td><td>@r.OrderDate</td><td>@r.TotalAmount</td>
+                    <td>
+                        <button class="btn btn-outline-success btn-sm" @onclick="() => ReceiveAsync(r.Id)" disabled="@(_busy || r.Status == "Received")">一键收货入库</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private bool _busy;
+    private string _input = "";
+    private string _receiveInput = "";
+    private string? _message;
+    private List<PurchaseOrderSummaryDto> _rows = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<PurchaseOrderSummaryDto>>>("api/business/purchase-orders");
+            _rows = env?.Success == true ? env.Data ?? new() : new();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        try
+        {
+            var lines = new List<PurchaseSuggestionLineDto>();
+            foreach (var l in _input.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var p = l.Split(',', StringSplitOptions.TrimEntries);
+                if (p.Length < 7) continue;
+                if (!long.TryParse(p[0], out var pid)) continue;
+                decimal.TryParse(p[3], out var current);
+                decimal.TryParse(p[4], out var req);
+                decimal.TryParse(p[5], out var buy);
+                decimal.TryParse(p[6], out var cost);
+                lines.Add(new PurchaseSuggestionLineDto(pid, p[1], p[2], current, req, buy, cost));
+            }
+            await Http.PostAsJsonAsync("api/business/purchase-orders", new PurchaseOrderCreateRequestDto(null, null, lines));
+            _message = "采购单已生成。";
+            await LoadAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ReceiveAsync(long id)
+    {
+        _busy = true;
+        try
+        {
+            var lines = new List<PurchaseReceiveLineDto>();
+            foreach (var l in _receiveInput.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var p = l.Split(',', StringSplitOptions.TrimEntries);
+                if (p.Length < 2) continue;
+                if (long.TryParse(p[0], out var pid) && decimal.TryParse(p[1], out var qty) && qty > 0)
+                    lines.Add(new PurchaseReceiveLineDto(pid, qty));
+            }
+            var body = lines.Count == 0 ? null : new PurchaseReceiveRequestDto(lines);
+            var resp = await Http.PostAsJsonAsync($"api/business/purchase-orders/{id}/receive", body);
+            var text = await resp.Content.ReadAsStringAsync();
+            var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<PurchaseReceiveResultDto>>(text, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (env?.Success == true && env.Data is not null)
+                _message = $"采购单 {env.Data.PurchaseOrderNo} 已收货，入库金额 {env.Data.ReceivedAmount}，应付单 {env.Data.AccountsPayableNo}";
+            await LoadAsync();
+        }
+        finally { _busy = false; }
+    }
+}

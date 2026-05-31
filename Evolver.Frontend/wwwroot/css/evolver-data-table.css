@@ -70,3 +70,44 @@
     appearance: none;
     border: 1px solid var(--bs-border-color, #dee2e6) !important;
 }
+
+/* 用户管理：组织树节点按钮（可读性） */
+.ev-user-org-tree-btn {
+    color: var(--bs-body-color);
+    background-color: transparent;
+    border: 1px solid transparent;
+}
+
+.ev-user-org-tree-btn:hover,
+.ev-user-org-tree-btn:focus-visible {
+    color: var(--bs-body-color);
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+    border-color: var(--bs-border-color, #dee2e6);
+}
+
+.ev-user-org-tree-btn--active,
+.ev-user-org-tree-btn--active:hover,
+.ev-user-org-tree-btn--active:focus-visible {
+    color: #fff;
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+/* 显示列下拉 */
+.ev-colvis-menu {
+    min-width: 11rem;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.ev-colvis-menu-header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.ev-colvis-item {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}

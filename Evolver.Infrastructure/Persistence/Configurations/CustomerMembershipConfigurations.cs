@@ -8,7 +8,20 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {
     public void Configure(EntityTypeBuilder<Customer> builder)
     {
+        builder.HasOne(x => x.CustomerCategory)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerCategoryRefId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(x => new { x.TenantId, x.OrgId, x.Code }).IsUnique();
+    }
+}
+
+internal sealed class CustomerCategoryConfiguration : IEntityTypeConfiguration<CustomerCategory>
+{
+    public void Configure(EntityTypeBuilder<CustomerCategory> builder)
+    {
+        builder.HasIndex(x => new { x.TenantId, x.OrgId, x.CategoryCode }).IsUnique();
     }
 }
 

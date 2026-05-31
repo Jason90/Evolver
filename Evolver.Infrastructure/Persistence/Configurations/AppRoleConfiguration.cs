@@ -18,7 +18,7 @@ internal sealed class AppRoleConfiguration : IEntityTypeConfiguration<AppRole>
 
     {
 
-        builder.Property(r => r.IsDeleted).HasDefaultValue(false);
+        builder.Property(r => r.IsActive).HasDefaultValue(true);
 
 
 
@@ -34,7 +34,7 @@ internal sealed class AppRoleConfiguration : IEntityTypeConfiguration<AppRole>
 
             .IsUnique()
 
-            .HasFilter("IsDeleted = 0");
+            .HasFilter("IsActive = 1");
 
     }
 

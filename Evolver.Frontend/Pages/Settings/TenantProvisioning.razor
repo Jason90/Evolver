@@ -4,6 +4,7 @@
 @using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
 @implements IAsyncDisposable
 @inject HttpClient Http
 @inject IJSRuntime JS
@@ -30,20 +31,25 @@
     </div>
 }
 
-@if (_pane == TenantPane.List)
-{
-    <EvolverDataTable TableHostId="@TenantTableHostId" Loading="@(_tenants is null)">
+<EvolverDataTable TableHostId="@TenantTableHostId" Loading="@(_tenants is null)">
         <ToolbarStart>
-            <div class="position-relative">
-                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
-                      aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
-                    </svg>
-                </span>
-                <label class="visually-hidden" for="tenant-global-filter">全文检索</label>
-                <input id="tenant-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
-                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+            <div class="d-flex flex-wrap gap-2">
+                <div class="position-relative">
+                    <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
+                          aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                        </svg>
+                    </span>
+                    <label class="visually-hidden" for="tenant-global-filter">全文检索</label>
+                    <input id="tenant-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
+                           value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+                </div>
+                <select class="form-select form-select-sm" style="width:10rem" @bind="_statusFilter" @bind:after="OnFilterChangedAsync" disabled="@_busy">
+                    <option value="all">状态：全部</option>
+                    <option value="active">状态：正常</option>
+                    <option value="inactive">状态：停用</option>
+                </select>
             </div>
         </ToolbarStart>
         <ToolbarEnd>
@@ -73,17 +79,19 @@
                 <i class="bi bi-arrow-clockwise me-1"></i>刷新
             </button>
         </ToolbarEnd>
-    </EvolverDataTable>
-}
-else if (_pane == TenantPane.Create)
-{
-    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回租户列表</button>
-    </div>
+</EvolverDataTable>
 
-    <div class="card shadow-sm" style="max-width:32rem">
-        <div class="card-header">新建租户</div>
-        <div class="card-body">
+@if (_pane == TenantPane.Create)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" @onkeydown="OnCreateModalKeyDown">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建租户</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CancelToListAsync" disabled="@_busy"></button>
+                </div>
+                <div class="modal-body" tabindex="0">
             <div class="mb-3">
                 <label class="form-label">新公司 / 租户名称 <span class="text-danger">*</span></label>
                 <input class="form-control" @bind="_tenantName" @bind:event="oninput" disabled="@_busy" autocomplete="organization" />
@@ -104,71 +112,139 @@ else if (_pane == TenantPane.Create)
                 <label class="form-label">管理员邮箱（可选）</label>
                 <input class="form-control" type="email" @bind="_adminEmail" @bind:event="oninput" disabled="@_busy" />
             </div>
-            <div class="d-flex gap-2">
+            <div class="mb-3">
+                <label class="form-label">到期时间（可选）</label>
+                <input class="form-control" type="date" @bind="_expireAt" disabled="@_busy" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label d-block">状态</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tenantActiveCreate" id="tenant-create-active-y" checked="@_tenantIsActive" @onchange="@(() => _tenantIsActive = true)" disabled="@_busy" />
+                    <label class="form-check-label" for="tenant-create-active-y">正常</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="tenantActiveCreate" id="tenant-create-active-n" checked="@(!_tenantIsActive)" @onchange="@(() => _tenantIsActive = false)" disabled="@_busy" />
+                    <label class="form-check-label" for="tenant-create-active-n">停用</label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">备注</label>
+                <textarea class="form-control" rows="2" @bind="_remark" @bind:event="oninput" disabled="@_busy"></textarea>
+            </div>
+                </div>
+                <div class="modal-footer">
                 <button type="button" class="btn btn-primary" @onclick="SubmitCreateAsync" disabled="@_busy">保存</button>
                 <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+                </div>
             </div>
         </div>
     </div>
 }
-else if (_pane == TenantPane.Edit)
-{
-    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回租户列表</button>
-    </div>
 
-    @if (_editDetail is null)
-    {
-        <div class="card shadow-sm">
-            <div class="card-body text-center py-5">
-                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
-                <p class="mt-3 mb-0 text-muted">正在加载租户…</p>
+@if (_pane == TenantPane.Edit)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" @onkeydown="OnEditModalKeyDown">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                @if (_editDetail is null)
+                {
+                    <div class="modal-body text-center py-5">
+                        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                        <p class="mt-3 mb-0 text-muted">正在加载租户…</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="modal-header">
+                        <h5 class="modal-title">编辑租户 — Id @_editDetail.TenantId</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CancelToListAsync" disabled="@_busy"></button>
+                    </div>
+                    <div class="modal-body" tabindex="0">
+                        <div class="mb-3">
+                            <label class="form-label">租户 ID</label>
+                            <input class="form-control" value="@_editDetail.TenantId.ToString()" disabled />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">创建时间</label>
+                            <input class="form-control" value="@FormatDateTime(_editDetail.CreateTime)" disabled />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">更新时间</label>
+                            <input class="form-control" value="@FormatDateTime(_editDetail.UpdateTime)" disabled />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">租户名称 <span class="text-danger">*</span></label>
+                            <input class="form-control @(string.IsNullOrEmpty(_editNameError) ? "" : "is-invalid")"
+                                   @bind="_editName" @bind:event="oninput" disabled="@_busy" />
+                            @if (_editNameError is { } enErr)
+                            {
+                                <div class="invalid-feedback d-block">@enErr</div>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">根组织名称 <span class="text-danger">*</span></label>
+                            <input class="form-control" @bind="_editRootOrgName" @bind:event="oninput" disabled="@_busy" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">管理员用户名</label>
+                            <input class="form-control" value="@_editDetail.AdminUserName" disabled />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">管理员邮箱</label>
+                            <input class="form-control" type="email" @bind="_editAdminEmail" @bind:event="oninput" disabled="@_busy" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">到期时间</label>
+                            <input class="form-control" type="date" @bind="_editExpireAt" disabled="@_busy" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-block">状态</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tenantActiveEdit" id="tenant-edit-active-y" checked="@_editIsActive" @onchange="@(() => _editIsActive = true)" disabled="@_busy" />
+                                <label class="form-check-label" for="tenant-edit-active-y">正常</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tenantActiveEdit" id="tenant-edit-active-n" checked="@(!_editIsActive)" @onchange="@(() => _editIsActive = false)" disabled="@_busy" />
+                                <label class="form-check-label" for="tenant-edit-active-n">停用</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">备注</label>
+                            <textarea class="form-control" rows="2" @bind="_editRemark" @bind:event="oninput" disabled="@_busy"></textarea>
+                        </div>
+                        @if (_editDetail.TenantId == _platformTenantId)
+                        {
+                            <p class="text-muted small">平台租户不可停用。</p>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@_busy">保存</button>
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
+                    </div>
+                }
             </div>
         </div>
-    }
-    else
-    {
-        <div class="card shadow-sm" style="max-width:32rem">
-            <div class="card-header">编辑租户 — Id @_editDetail.Id</div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">租户 Id</label>
-                    <input class="form-control" value="@_editDetail.Id.ToString()" disabled />
+    </div>
+}
+
+@if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">确认删除</h5>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="CancelToListAsync" disabled="@_busy"></button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">租户名称 <span class="text-danger">*</span></label>
-                    <input class="form-control @(string.IsNullOrEmpty(_editNameError) ? "" : "is-invalid")"
-                           @bind="_editName" @bind:event="oninput" disabled="@_busy" />
-                    @if (_editNameError is { } enErr)
-                    {
-                        <div class="invalid-feedback d-block">@enErr</div>
-                    }
+                <div class="modal-body">
+                    <p class="mb-0">确定逻辑删除租户 <strong>@_deleteLabel</strong>（Id <strong>@_deleteId</strong>）？删除后列表不再显示，数据仍保留在库中。</p>
                 </div>
-                @if (_editDetail.Id == _platformTenantId)
-                {
-                    <p class="text-muted small">平台租户名称不可修改。</p>
-                }
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-primary" @onclick="SaveEditAsync" disabled="@(_busy || _editDetail.Id == _platformTenantId)">保存</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
                     <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
                 </div>
-            </div>
-        </div>
-    }
-}
-else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
-{
-    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
-        <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">返回租户列表</button>
-    </div>
-
-    <div class="card border-danger shadow-sm">
-        <div class="card-header bg-danger text-white">确认删除</div>
-        <div class="card-body">
-            <p class="mb-3">确定逻辑删除租户 <strong>@_deleteLabel</strong>（Id <strong>@_deleteId</strong>）？删除后列表不再显示，数据仍保留在库中。</p>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-danger" @onclick="DeleteConfirmedAsync" disabled="@_busy">删除</button>
-                <button type="button" class="btn btn-outline-secondary" @onclick="CancelToListAsync" disabled="@_busy">取消</button>
             </div>
         </div>
     </div>
@@ -198,11 +274,19 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
     private string _adminUser = "";
     private string _adminPassword = "";
     private string _adminEmail = "";
+    private DateTime? _expireAt;
+    private bool _tenantIsActive = true;
+    private string? _remark;
 
     private int _editId;
     private TenantListItemDto? _editDetail;
     private string _editName = "";
     private string? _editNameError;
+    private string _editRootOrgName = "";
+    private string? _editAdminEmail;
+    private DateTime? _editExpireAt;
+    private bool _editIsActive = true;
+    private string? _editRemark;
 
     private int? _deleteId;
     private string _deleteLabel = "";
@@ -210,6 +294,7 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
     private int _platformTenantId = 1;
 
     private string _globalFilter = "";
+    private string _statusFilter = "all";
     private bool _exportMenuOpen;
     private bool _exportClickOutsideRegistered;
     private ElementReference _exportDropdownRoot;
@@ -257,30 +342,26 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         _editNameError = null;
         _deleteId = null;
         _deleteLabel = "";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshTenantListAsync()
+    {
+        _pane = TenantPane.List;
+        _editDetail = null;
+        _editNameError = null;
+        _deleteId = null;
+        _deleteLabel = "";
+        await DestroyTabulatorAsync();
+        _tabulatorSyncedTick = -1;
         await LoadTenantsAsync();
+        await InvokeAsync(StateHasChanged);
+        if (_tenants is not null)
+            await SyncTenantTabulatorToDomAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_pane != TenantPane.List)
-        {
-            if (_tabulatorSyncedTick >= 0)
-            {
-                await DestroyTabulatorAsync();
-                _tabulatorSyncedTick = -1;
-            }
-            if (_exportClickOutsideRegistered)
-            {
-                try
-                {
-                    await JS.InvokeVoidAsync("evolverUi.stopExportMenuClickOutside");
-                }
-                catch (JSDisconnectedException) { }
-                _exportClickOutsideRegistered = false;
-            }
-            return;
-        }
-
         if (_exportMenuOpen && !_exportClickOutsideRegistered)
         {
             try
@@ -324,17 +405,24 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
             var json = JsonSerializer.Serialize(
                 _tenants.Select(t => new
                 {
-                    id = t.Id,
-                    name = t.Name,
+                    tenantId = t.TenantId,
+                    tenantName = t.TenantName,
                     rootOrgName = t.RootOrgName,
+                    createTimeText = FormatDateTime(t.CreateTime),
+                    updateTimeText = FormatDateTime(t.UpdateTime),
+                    expireAtText = FormatDateTime(t.ExpireAt),
+                    statusText = t.StatusText,
                     adminUserName = t.AdminUserName,
                     adminEmail = t.AdminEmail ?? "",
-                    canDelete = t.Id != _platformTenantId
+                    remark = t.Remark ?? "",
+                    canDelete = t.TenantId != _platformTenantId
                 }).ToList(),
                 TabulatorJsonOpts);
-            await EvolverDataTableInterop.SyncAsync(JS, TenantTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Tenants, null);
-            _tabulatorSyncedTick = _dataTick;
-            await ApplyGlobalFilterJsAsync();
+            if (await EvolverDataTableInterop.TrySyncAsync(JS, TenantTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Tenants, null))
+            {
+                _tabulatorSyncedTick = _dataTick;
+                await ApplyGlobalFilterJsAsync();
+            }
         }
         catch (JSDisconnectedException)
         {
@@ -404,6 +492,37 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         catch (JSDisconnectedException) { }
     }
 
+    private static string FormatDateTime(DateTime? dt) =>
+        dt is null ? "" : dt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+
+    private async Task OnCreateModalKeyDown(KeyboardEventArgs e)
+    {
+        if (_busy)
+            return;
+        if (e.Key == "Escape")
+        {
+            await CancelToListAsync();
+            return;
+        }
+        if (e.Key == "Enter")
+            await SubmitCreateAsync();
+    }
+
+    private async Task OnEditModalKeyDown(KeyboardEventArgs e)
+    {
+        if (_busy)
+            return;
+        if (e.Key == "Escape")
+        {
+            await CancelToListAsync();
+            return;
+        }
+        if (e.Key == "Enter")
+            await SaveEditAsync();
+    }
+
+    private async Task OnFilterChangedAsync() => await ReloadAllAsync();
+
     [JSInvokable]
     public async Task OnTenantTableEdit(int id) => await OpenEditAsync(id);
 
@@ -458,7 +577,11 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
             }
 
             _success = "租户已逻辑删除。";
-            await CancelToListAsync();
+            _pane = TenantPane.List;
+            _deleteId = null;
+            _deleteLabel = "";
+            await InvokeAsync(StateHasChanged);
+            await RefreshTenantListAsync();
         }
         catch (Exception ex)
         {
@@ -468,11 +591,6 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         {
             _busy = false;
         }
-
-        if (_pane == TenantPane.List)
-            await SyncTenantTabulatorToDomAsync();
-
-        await InvokeAsync(StateHasChanged);
     }
 
     private void OpenCreateAsync()
@@ -484,6 +602,9 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         _adminUser = "";
         _adminPassword = "";
         _adminEmail = "";
+        _expireAt = null;
+        _tenantIsActive = true;
+        _remark = null;
         _pane = TenantPane.Create;
     }
 
@@ -497,11 +618,16 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         _pane = TenantPane.Edit;
 
         // 列表数据已在内存中，直接打开编辑（避免依赖 GET api/tenants/{id}，防止旧后端未注册该路由时出现 404）
-        var local = _tenants?.FirstOrDefault(t => t.Id == id);
+        var local = _tenants?.FirstOrDefault(t => t.TenantId == id);
         if (local is not null)
         {
             _editDetail = local;
-            _editName = local.Name;
+            _editName = local.TenantName;
+            _editRootOrgName = local.RootOrgName;
+            _editAdminEmail = local.AdminEmail;
+            _editExpireAt = local.ExpireAt?.Date;
+            _editIsActive = local.IsActive;
+            _editRemark = local.Remark;
             await InvokeAsync(StateHasChanged);
             return;
         }
@@ -521,7 +647,12 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
             }
 
             _editDetail = env.Data;
-            _editName = env.Data.Name;
+            _editName = env.Data.TenantName;
+            _editRootOrgName = env.Data.RootOrgName;
+            _editAdminEmail = env.Data.AdminEmail;
+            _editExpireAt = env.Data.ExpireAt?.Date;
+            _editIsActive = env.Data.IsActive;
+            _editRemark = env.Data.Remark;
         }
         catch (Exception ex)
         {
@@ -539,7 +670,7 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
 
     private async Task SaveEditAsync()
     {
-        if (_busy || _editDetail is null || _editDetail.Id == _platformTenantId)
+        if (_busy || _editDetail is null)
             return;
 
         _editNameError = string.IsNullOrWhiteSpace(_editName) ? "请输入租户名称。" : null;
@@ -551,7 +682,13 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         _success = null;
         try
         {
-            var resp = await Http.PutAsJsonAsync($"api/tenants/{_editId}", new UpdateTenantDto(_editName.Trim()));
+            var resp = await Http.PutAsJsonAsync($"api/tenants/{_editId}", new UpdateTenantDto(
+                _editName.Trim(),
+                _editRootOrgName.Trim(),
+                _editExpireAt,
+                _editIsActive,
+                string.IsNullOrWhiteSpace(_editAdminEmail) ? null : _editAdminEmail.Trim(),
+                string.IsNullOrWhiteSpace(_editRemark) ? null : _editRemark.Trim()));
             var text = await resp.Content.ReadAsStringAsync();
             if (!resp.IsSuccessStatusCode)
             {
@@ -560,7 +697,7 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
             }
 
             _success = "租户名称已更新。";
-            await CancelToListAsync();
+            await RefreshTenantListAsync();
         }
         catch (Exception ex)
         {
@@ -570,9 +707,6 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         {
             _busy = false;
         }
-
-        if (_pane == TenantPane.List)
-            await SyncTenantTabulatorToDomAsync();
 
         await InvokeAsync(StateHasChanged);
     }
@@ -591,7 +725,10 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
                 _adminUser.Trim(),
                 _adminPassword,
                 string.IsNullOrWhiteSpace(_rootOrgName) ? null : _rootOrgName.Trim(),
-                string.IsNullOrWhiteSpace(_adminEmail) ? null : _adminEmail.Trim());
+                string.IsNullOrWhiteSpace(_adminEmail) ? null : _adminEmail.Trim(),
+                _tenantIsActive,
+                _expireAt,
+                string.IsNullOrWhiteSpace(_remark) ? null : _remark.Trim());
 
             var resp = await Http.PostAsJsonAsync("api/tenants/provision", dto);
             var text = await resp.Content.ReadAsStringAsync();
@@ -607,7 +744,7 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
                 _success =
                     $"已创建租户 Id={data.TenantId}（{data.TenantName}），根组织「{data.RootOrgName}」，管理员「{data.AdminUserName}」。新管理员登录时请在登录页填写租户编号 {data.TenantId}（若全库仅有一个该用户名，可不填）。";
                 _adminPassword = "";
-                await CancelToListAsync();
+                await RefreshTenantListAsync();
             }
             else
                 _error = env?.Message ?? "创建失败。";
@@ -620,9 +757,6 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
         {
             _busy = false;
         }
-
-        if (_pane == TenantPane.List)
-            await SyncTenantTabulatorToDomAsync();
 
         await InvokeAsync(StateHasChanged);
     }
@@ -657,9 +791,7 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
             }
             else
                 _error = env?.Message ?? "导入失败。";
-            await LoadTenantsAsync();
-            if (_pane == TenantPane.List)
-                await SyncTenantTabulatorToDomAsync();
+            await RefreshTenantListAsync();
         }
         catch (Exception ex)
         {
@@ -676,7 +808,8 @@ else if (_pane == TenantPane.DeleteConfirm && _deleteId is not null)
     {
         try
         {
-            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<TenantListItemDto>>>("api/tenants");
+            var qs = $"?status={Uri.EscapeDataString(_statusFilter)}";
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<TenantListItemDto>>>($"api/tenants{qs}");
             _tenants = env?.Success == true ? env.Data ?? new() : new();
             if (env?.Success == false)
                 _error = env.Message;

@@ -1,6 +1,89 @@
 @page "/product-master"
+@using Evolver.Shared.Api
+@using Evolver.Shared.Dtos
+@inject HttpClient Http
 
-<PageTitle>分类 / 库存 / BOM</PageTitle>
+<PageTitle>物料清单与库存</PageTitle>
+<h1 class="mb-2">物料清单（BOM）与原材料库存</h1>
 
-<ComingSoonPanel Title="商品主数据（2.3）"
-                 Description="商品分类、建议价、理论/实际库存、预警库存、成本；库存台账 + 快照；多级 BOM 配置。" />
+<div class="card mb-3">
+    <div class="card-header">计划销售商品（格式：商品Id:数量，每行一条）</div>
+    <div class="card-body">
+        <textarea class="form-control mb-2" rows="5" @bind="_planInput"></textarea>
+        <button class="btn btn-primary" @onclick="CalcRequirementsAsync" disabled="@_busy">计算配料需求与缺口</button>
+    </div>
+</div>
+
+<h5>BOM需求/缺口</h5>
+<div class="table-responsive mb-3">
+    <table class="table table-sm table-striped">
+        <thead><tr><th>物料</th><th>需求</th><th>库存</th><th>缺口</th></tr></thead>
+        <tbody>
+            @foreach (var r in _requirements)
+            {
+                <tr>
+                    <td>@r.ComponentCode - @r.ComponentName</td>
+                    <td>@r.RequiredQty</td>
+                    <td>@r.CurrentStock</td>
+                    <td class="@(r.ShortageQty > 0 ? "text-danger" : "")">@r.ShortageQty</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h5>原材料库存快照</h5>
+<button class="btn btn-outline-secondary btn-sm mb-2" @onclick="LoadStocksAsync" disabled="@_busy">刷新库存</button>
+<div class="table-responsive">
+    <table class="table table-sm table-striped">
+        <thead><tr><th>物料</th><th>当前库存</th></tr></thead>
+        <tbody>
+            @foreach (var s in _stocks)
+            {
+                <tr><td>@s.ComponentCode - @s.ComponentName</td><td>@s.CurrentStock</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private bool _busy;
+    private string _planInput = "";
+    private List<BomRequirementItemDto> _requirements = new();
+    private List<BomRequirementItemDto> _stocks = new();
+
+    protected override async Task OnInitializedAsync() => await LoadStocksAsync();
+
+    private async Task CalcRequirementsAsync()
+    {
+        _busy = true;
+        try
+        {
+            var lines = _planInput.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var plan = new List<PlannedSalesItemDto>();
+            foreach (var l in lines)
+            {
+                var parts = l.Split(':', StringSplitOptions.TrimEntries);
+                if (parts.Length != 2) continue;
+                if (long.TryParse(parts[0], out var pid) && decimal.TryParse(parts[1], out var q) && q > 0)
+                    plan.Add(new PlannedSalesItemDto(pid, q));
+            }
+            var resp = await Http.PostAsJsonAsync("api/business/bom-requirements", new BomRequirementRequestDto(plan));
+            var text = await resp.Content.ReadAsStringAsync();
+            var env = System.Text.Json.JsonSerializer.Deserialize<ApiEnvelopeJson<List<BomRequirementItemDto>>>(text, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            _requirements = env?.Success == true ? env.Data ?? new() : new();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task LoadStocksAsync()
+    {
+        _busy = true;
+        try
+        {
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<BomRequirementItemDto>>>("api/business/raw-material-stocks");
+            _stocks = env?.Success == true ? env.Data ?? new() : new();
+        }
+        finally { _busy = false; }
+    }
+}

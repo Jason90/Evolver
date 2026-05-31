@@ -1,6 +1,4 @@
 ﻿@implements IDisposable
-@using Evolver.Shared.Api
-@using Evolver.Shared.Dtos
 @inject NavigationManager Nav
 @inject HttpClient Http
 @inject AuthTokenStore Tokens
@@ -44,8 +42,10 @@
                     <NavLink class="nav-link nav-sublink" href="settings/users">用户管理</NavLink>
                     <NavLink class="nav-link nav-sublink" href="settings/roles">角色管理</NavLink>
                     <NavLink class="nav-link nav-sublink" href="settings/permissions">菜单权限</NavLink>
-                    <NavLink class="nav-link nav-sublink" href="settings/data-dictionary">字典管理</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/data-dictionary">数据字典</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/enum-config">枚举配置</NavLink>
                     <NavLink class="nav-link nav-sublink" href="settings/parameters">参数设置</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="settings/units">单位维护</NavLink>
                 </div>
             }
         </div>
@@ -62,6 +62,7 @@
             @if (_customerExpanded)
             {
                 <div class="nav-settings-flyout">
+                    <NavLink class="nav-link nav-sublink" href="customer-categories">客户类别</NavLink>
                     <NavLink class="nav-link nav-sublink" href="customers">客户信息</NavLink>
                 </div>
             }
@@ -81,6 +82,7 @@
                 <div class="nav-settings-flyout">
                     <NavLink class="nav-link nav-sublink" href="products">商品信息</NavLink>
                     <NavLink class="nav-link nav-sublink" href="product-master">物料清单</NavLink>
+                    <NavLink class="nav-link nav-sublink" href="product-categories">商品类别</NavLink>
                 </div>
             }
         </div>
@@ -264,12 +266,14 @@
         if (_settingsRouteActive)
             _settingsExpanded = true;
 
-        _customerRouteActive = u.Contains("/customers", StringComparison.OrdinalIgnoreCase);
+        _customerRouteActive = u.Contains("/customers", StringComparison.OrdinalIgnoreCase)
+                               || u.Contains("/customer-categories", StringComparison.OrdinalIgnoreCase);
         if (_customerRouteActive)
             _customerExpanded = true;
 
         _productRouteActive = u.Contains("/products", StringComparison.OrdinalIgnoreCase)
-                              || u.Contains("/product-master", StringComparison.OrdinalIgnoreCase);
+                              || u.Contains("/product-master", StringComparison.OrdinalIgnoreCase)
+                              || u.Contains("/product-categories", StringComparison.OrdinalIgnoreCase);
         if (_productRouteActive)
             _productExpanded = true;
 

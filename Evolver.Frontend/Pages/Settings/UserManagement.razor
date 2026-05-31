@@ -1,5 +1,6 @@
 @page "/settings/users"
-@using System.Linq
+@using System.Text.Json.Serialization
+@using Evolver.Frontend.Components.DataTable
 @using System.Text.Json
 @using System.Text.RegularExpressions
 @using Microsoft.AspNetCore.Components.Forms
@@ -32,48 +33,108 @@
 
 @if (_pane == UserPane.List)
 {
-    <EvolverDataTable TableHostId="@UserTableHostId" Loading="@(_users is null)">
-        <ToolbarStart>
-            <div class="position-relative">
-                <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
-                      aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
-                    </svg>
-                </span>
-                <label class="visually-hidden" for="user-global-filter">全文检索</label>
-                <input id="user-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
-                       value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
+    <div class="row g-3">
+        <div class="col-12 col-lg-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>组织树</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="ClearOrgFilterAsync" disabled="@_busy">全部</button>
+                </div>
+                <div class="card-body p-2" style="max-height:calc(100vh - 260px);overflow:auto">
+                    @if (_orgRoots.Count == 0)
+                    {
+                        <div class="text-muted small px-2">暂无组织</div>
+                    }
+                    else
+                    {
+                        @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
+                        {
+                            <button type="button"
+                                    class="btn btn-sm w-100 text-start mb-1 ev-user-org-tree-btn @(_selectedOrgId == node.Id ? "ev-user-org-tree-btn--active" : "")"
+                                    style="padding-left:@($"{0.75 + depth * 1.1}rem")"
+                                    @ondragover="OnOrgNodeDragOver"
+                                    @ondrop="async _ => await OnOrgNodeDropAsync(node.Id)"
+                                    @onclick="() => SelectOrgNodeAsync(node.Id)">
+                                @node.Name
+                            </button>
+                        }
+                    }
+                </div>
             </div>
-        </ToolbarStart>
-        <ToolbarEnd>
-            <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreateAsync" disabled="@_busy">
-                <i class="bi bi-plus-lg me-1"></i>新增
-            </button>
-            <div @ref="_exportDropdownRoot" class="dropdown position-relative">
-                <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
-                        @onclick="() => _exportMenuOpen = !_exportMenuOpen"
-                        disabled="@(_busy || _users is null)">
-                    <i class="bi bi-download me-1"></i>导出
-                </button>
-                @if (_exportMenuOpen)
-                {
-                    <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
-                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
-                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
-                        <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+        </div>
+        <div class="col-12 col-lg-10">
+            <EvolverDataTable TableHostId="@UserTableHostId" Loading="@(_users is null)">
+                <ToolbarStart>
+                    <div class="position-relative">
+                        <span class="ev-toolbar-search-icon position-absolute top-50 start-0 translate-middle-y ms-3 text-body-secondary"
+                              aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                            </svg>
+                        </span>
+                        <label class="visually-hidden" for="user-global-filter">全文检索</label>
+                        <input id="user-global-filter" type="search" class="form-control ps-5 ev-toolbar-search-input" placeholder="全文检索"
+                               value="@_globalFilter" @oninput="OnGlobalFilterInput" disabled="@_busy" autocomplete="off" />
                     </div>
-                }
-            </div>
-            <label class="btn btn-outline-secondary btn-sm mb-0" title="服务端导入 .xlsx，工作表名 Users">
-                <i class="bi bi-upload me-1"></i>导入
-                <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
-            </label>
-            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
-                <i class="bi bi-arrow-clockwise me-1"></i>刷新
-            </button>
-        </ToolbarEnd>
-    </EvolverDataTable>
+                </ToolbarStart>
+                <ToolbarEnd>
+                    <button type="button" class="btn btn-primary btn-sm px-3" @onclick="OpenCreateAsync" disabled="@_busy">
+                        <i class="bi bi-plus-lg me-1"></i>新增
+                    </button>
+                    <div @ref="_exportDropdownRoot" class="dropdown position-relative">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                                @onclick="OpenExportMenu"
+                                disabled="@(_busy || _users is null)">
+                            <i class="bi bi-download me-1"></i>导出
+                        </button>
+                        @if (_exportMenuOpen)
+                        {
+                            <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-1" style="z-index:40;min-width:10rem">
+                                <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("csv"))'>CSV</button>
+                                <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("xlsx"))'>Excel</button>
+                                <button type="button" class="dropdown-item" @onclick='@(() => ExportAndCloseAsync("pdf"))'>PDF</button>
+                            </div>
+                        }
+                    </div>
+                    <label class="btn btn-outline-secondary btn-sm mb-0" title="服务端导入 .xlsx，工作表名 Users">
+                        <i class="bi bi-upload me-1"></i>导入
+                        <InputFile OnChange="ImportExcelAsync" accept=".xlsx" class="d-none" />
+                    </label>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ReloadAllAsync" disabled="@_busy">
+                        <i class="bi bi-arrow-clockwise me-1"></i>刷新
+                    </button>
+                    <div @ref="_columnDropdownRoot" class="dropdown position-relative">
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                title="显示列"
+                                @onclick="ToggleColumnMenuAsync"
+                                disabled="@(_busy || _users is null)">
+                            <i class="bi bi-layout-three-columns"></i>
+                        </button>
+                        @if (_columnMenuOpen)
+                        {
+                            <div class="dropdown-menu show position-absolute end-0 mt-1 shadow py-2 ev-colvis-menu" style="z-index:40">
+                                <div class="dropdown-header ev-colvis-menu-header">
+                                    <label class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" checked="@_allColumnsVisible" @onchange="OnToggleAllColumnsAsync" />
+                                        <span class="form-check-label">列展示</span>
+                                    </label>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                @foreach (var col in _columnItems)
+                                {
+                                    <label class="dropdown-item ev-colvis-item">
+                                        <input class="form-check-input" type="checkbox" checked="@col.Visible"
+                                               @onchange="e => OnColumnVisibilityChangedAsync(col.Field, e)" />
+                                        @col.Title
+                                    </label>
+                                }
+                            </div>
+                        }
+                    </div>
+                </ToolbarEnd>
+            </EvolverDataTable>
+        </div>
+    </div>
 }
 else if (_pane == UserPane.Create)
 {
@@ -126,6 +187,10 @@ else if (_pane == UserPane.Create)
                     }
                 </div>
                 <div class="col-12">
+                    <label class="form-label">备注</label>
+                    <textarea class="form-control" rows="2" @bind="_cRemark" @bind:event="oninput"></textarea>
+                </div>
+                <div class="col-12">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="createActive" @bind="_cIsActive" />
                         <label class="form-check-label" for="createActive">账户启用（正常）；关闭则为停用，不可登录</label>
@@ -152,18 +217,14 @@ else if (_pane == UserPane.Create)
             @if (_orgRoots is { Count: > 0 })
             {
                 <div class="mt-3">
-                    <label class="form-label">关联组织（多选）</label>
-                    <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
+                    <label class="form-label">归属部门</label>
+                    <select class="form-select" @bind="_cDepartmentIdStr">
+                        <option value="">请选择归属部门</option>
                         @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
                         {
-                            <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
-                                <input class="form-check-input" type="checkbox" id="@($"co-{node.Id}")"
-                                       checked="@_cOrgIds.Contains(node.Id)"
-                                       @onchange="e => ToggleSet(_cOrgIds, node.Id, e)" />
-                                <label class="form-check-label" for="@($"co-{node.Id}")">@node.Name</label>
-                            </div>
+                            <option value="@node.Id">@($"{new string('　', depth)}{node.Name}")</option>
                         }
-                    </div>
+                    </select>
                 </div>
             }
             <div class="mt-4 d-flex gap-2">
@@ -218,6 +279,10 @@ else if (_pane == UserPane.Edit)
                     }
                 </div>
                 <div class="col-12">
+                    <label class="form-label">备注</label>
+                    <textarea class="form-control" rows="2" @bind="_eRemark" @bind:event="oninput"></textarea>
+                </div>
+                <div class="col-12">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="editActive" @bind="_eIsActive" />
                         <label class="form-check-label" for="editActive">账户启用（正常）；关闭则为停用，不可登录</label>
@@ -244,18 +309,14 @@ else if (_pane == UserPane.Edit)
             @if (_orgRoots is { Count: > 0 })
             {
                 <div class="mt-3">
-                    <label class="form-label">关联组织（多选）</label>
-                    <div class="border rounded p-2 bg-light" style="max-height:12rem;overflow:auto">
+                    <label class="form-label">归属部门</label>
+                    <select class="form-select" @bind="_eDepartmentIdStr">
+                        <option value="">请选择归属部门</option>
                         @foreach (var (node, depth) in FlattenOrgTree(_orgRoots))
                         {
-                            <div class="form-check" style="padding-left:@($"{1.25 + depth * 1.25}rem")">
-                                <input class="form-check-input" type="checkbox" id="@($"eo-{node.Id}")"
-                                       checked="@_eOrgIds.Contains(node.Id)"
-                                       @onchange="e => ToggleSet(_eOrgIds, node.Id, e)" />
-                                <label class="form-check-label" for="@($"eo-{node.Id}")">@node.Name</label>
-                            </div>
+                            <option value="@node.Id">@($"{new string('　', depth)}{node.Name}")</option>
                         }
-                    </div>
+                    </select>
                 </div>
             }
             <div class="mt-4 d-flex gap-2">
@@ -344,8 +405,9 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     private string _cPassword = "";
     private string? _cEmail;
     private string? _cPhone;
+    private string? _cRemark;
+    private string _cDepartmentIdStr = "";
     private readonly HashSet<string> _cRoles = new(StringComparer.Ordinal);
-    private readonly HashSet<long> _cOrgIds = new();
     private bool _cIsActive = true;
 
     private bool _createAttempted;
@@ -356,8 +418,9 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     private UserDetailDto? _editDetail;
     private string? _eEmail;
     private string? _ePhone;
+    private string? _eRemark;
+    private string _eDepartmentIdStr = "";
     private readonly HashSet<string> _eRoles = new(StringComparer.Ordinal);
-    private readonly HashSet<long> _eOrgIds = new();
     private bool _eIsActive = true;
 
     private long? _passwordUserId;
@@ -367,9 +430,15 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     private long? _deleteId;
 
     private string _globalFilter = "";
+    private long? _selectedOrgId;
     private bool _exportMenuOpen;
     private bool _exportClickOutsideRegistered;
     private ElementReference _exportDropdownRoot;
+    private bool _columnMenuOpen;
+    private bool _columnClickOutsideRegistered;
+    private ElementReference _columnDropdownRoot;
+    private List<ColumnVisibilityItem> _columnItems = new();
+    private bool _allColumnsVisible = true;
     private int _dataTick;
     private int _tabulatorSyncedTick = -1;
     private DotNetObjectReference<UserManagement>? _dotNetRef;
@@ -387,6 +456,7 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
         _success = null;
         _globalFilter = "";
         _exportMenuOpen = false;
+        _columnMenuOpen = false;
 
         if (_exportClickOutsideRegistered)
         {
@@ -396,6 +466,16 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             }
             catch (JSDisconnectedException) { }
             _exportClickOutsideRegistered = false;
+        }
+
+        if (_columnClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopColumnMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _columnClickOutsideRegistered = false;
         }
 
         if (_pane == UserPane.List && _tabulatorSyncedTick >= 0)
@@ -440,6 +520,15 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
                 catch (JSDisconnectedException) { }
                 _exportClickOutsideRegistered = false;
             }
+            if (_columnClickOutsideRegistered)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("evolverUi.stopColumnMenuClickOutside");
+                }
+                catch (JSDisconnectedException) { }
+                _columnClickOutsideRegistered = false;
+            }
             return;
         }
 
@@ -467,6 +556,30 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             _exportClickOutsideRegistered = false;
         }
 
+        if (_columnMenuOpen && !_columnClickOutsideRegistered)
+        {
+            try
+            {
+                _dotNetRef ??= DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync(
+                    "evolverUi.startColumnMenuClickOutside",
+                    _columnDropdownRoot,
+                    _dotNetRef,
+                    nameof(OnColumnMenuClickOutside));
+                _columnClickOutsideRegistered = true;
+            }
+            catch (JSDisconnectedException) { }
+        }
+        else if (!_columnMenuOpen && _columnClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopColumnMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _columnClickOutsideRegistered = false;
+        }
+
         if (_users is null)
             return;
 
@@ -491,14 +604,20 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
                     userName = u.UserName,
                     email = u.Email,
                     phoneNumber = u.PhoneNumber,
+                    departmentName = u.DepartmentName ?? "",
                     rolesText = string.Join(", ", u.Roles),
                     statusText = u.IsActive ? "正常" : "停用",
-                    isActive = u.IsActive
+                    isActive = u.IsActive,
+                    updateTimeText = u.UpdateTime?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "",
+                    updateByText = u.UpdateByUserName ?? (u.UpdateBy?.ToString() ?? ""),
+                    remark = u.Remark ?? ""
                 }).ToList(),
                 TabulatorJsonOpts);
             await EvolverDataTableInterop.SyncAsync(JS, UserTableHostId, json, _dotNetRef, EvolverDataTableSchemas.Users, _currentUserId);
             _tabulatorSyncedTick = _dataTick;
             await ApplyGlobalFilterJsAsync();
+            if (_columnMenuOpen)
+                await LoadColumnVisibilityMenuAsync();
         }
         catch (JSDisconnectedException)
         {
@@ -554,10 +673,151 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
         return InvokeAsync(StateHasChanged);
     }
 
+    [JSInvokable]
+    public Task OnColumnMenuClickOutside()
+    {
+        if (!_columnMenuOpen)
+            return Task.CompletedTask;
+        _columnMenuOpen = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenExportMenu()
+    {
+        _columnMenuOpen = false;
+        _exportMenuOpen = !_exportMenuOpen;
+    }
+
+    private async Task ToggleColumnMenuAsync()
+    {
+        if (_columnMenuOpen)
+        {
+            _columnMenuOpen = false;
+            return;
+        }
+
+        _exportMenuOpen = false;
+        await LoadColumnVisibilityMenuAsync();
+        _columnMenuOpen = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadColumnVisibilityMenuAsync()
+    {
+        if (_users is null)
+            return;
+        try
+        {
+            var raw = await JS.InvokeAsync<JsonElement>(
+                "evolverDataTable.getToggleableColumns",
+                UserTableHostId,
+                EvolverDataTableSchemas.Users);
+            _columnItems = JsonSerializer.Deserialize<List<ColumnVisibilityItem>>(raw.GetRawText(), JsonOpts) ?? new();
+            _allColumnsVisible = _columnItems.Count == 0 || _columnItems.All(c => c.Visible);
+        }
+        catch (JSDisconnectedException) { }
+        catch
+        {
+            _columnItems = BuildFallbackColumnItems();
+            _allColumnsVisible = _columnItems.All(c => c.Visible);
+        }
+    }
+
+    private static List<ColumnVisibilityItem> BuildFallbackColumnItems() =>
+    [
+        new() { Field = "id", Title = "Id", Visible = true },
+        new() { Field = "userName", Title = "用户名", Visible = true },
+        new() { Field = "email", Title = "Email", Visible = true },
+        new() { Field = "phoneNumber", Title = "电话", Visible = true },
+        new() { Field = "departmentName", Title = "归属部门", Visible = true },
+        new() { Field = "rolesText", Title = "角色", Visible = true },
+        new() { Field = "statusText", Title = "状态", Visible = true },
+        new() { Field = "updateTimeText", Title = "更新日期", Visible = true },
+        new() { Field = "updateByText", Title = "更新人", Visible = true },
+        new() { Field = "remark", Title = "备注", Visible = true }
+    ];
+
+    private async Task OnColumnVisibilityChangedAsync(string field, ChangeEventArgs e)
+    {
+        var visible = e.Value is bool b && b;
+        try
+        {
+            await JS.InvokeVoidAsync("evolverDataTable.setColumnVisible", UserTableHostId, field, visible);
+            await LoadColumnVisibilityMenuAsync();
+        }
+        catch (JSDisconnectedException) { }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnToggleAllColumnsAsync(ChangeEventArgs e)
+    {
+        var visible = e.Value is bool b && b;
+        try
+        {
+            var raw = await JS.InvokeAsync<JsonElement>(
+                "evolverDataTable.setAllColumnsVisible",
+                UserTableHostId,
+                visible);
+            _columnItems = JsonSerializer.Deserialize<List<ColumnVisibilityItem>>(raw.GetRawText(), JsonOpts) ?? new();
+            _allColumnsVisible = visible;
+        }
+        catch (JSDisconnectedException) { }
+        await InvokeAsync(StateHasChanged);
+    }
+
     private async Task OnGlobalFilterInput(ChangeEventArgs e)
     {
         _globalFilter = e.Value?.ToString() ?? "";
         await ApplyGlobalFilterJsAsync();
+    }
+
+    private async Task SelectOrgNodeAsync(long orgId)
+    {
+        _selectedOrgId = orgId;
+        await LoadUsersAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClearOrgFilterAsync()
+    {
+        _selectedOrgId = null;
+        await LoadUsersAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnOrgNodeDragOver(DragEventArgs e)
+    {
+        // 仅用于允许放置（浏览器默认会阻止 drop）
+    }
+
+    private async Task OnOrgNodeDropAsync(long targetOrgId)
+    {
+        if (_busy)
+            return;
+        try
+        {
+            var dragUserId = await JS.InvokeAsync<long?>("evolverUi.getDraggingUserId");
+            if (dragUserId is not { } uid || uid <= 0)
+                return;
+
+            _busy = true;
+            var resp = await Http.PostAsJsonAsync($"api/users/{uid}/move-department", new MoveUserDepartmentDto(targetOrgId));
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = ReadErrorText(await resp.Content.ReadAsStringAsync());
+            }
+            else
+            {
+                _success = $"用户 {uid} 已移动到组织 {targetOrgId}。";
+            }
+        }
+        finally
+        {
+            _busy = false;
+            await JS.InvokeVoidAsync("evolverUi.clearDraggingUserId");
+            await LoadUsersAsync();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task ApplyGlobalFilterJsAsync()
@@ -599,6 +859,16 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             _exportClickOutsideRegistered = false;
         }
 
+        if (_columnClickOutsideRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("evolverUi.stopColumnMenuClickOutside");
+            }
+            catch (JSDisconnectedException) { }
+            _columnClickOutsideRegistered = false;
+        }
+
         await DestroyTabulatorAsync();
         _dotNetRef?.Dispose();
         _dotNetRef = null;
@@ -612,8 +882,9 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
         _cPassword = "";
         _cEmail = null;
         _cPhone = null;
+        _cRemark = null;
+        _cDepartmentIdStr = _selectedOrgId?.ToString() ?? "";
         _cRoles.Clear();
-        _cOrgIds.Clear();
         _cIsActive = true;
         _createAttempted = false;
         if (_orgRoots.Count == 0)
@@ -649,12 +920,11 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             _editDetail = env.Data;
             _eEmail = env.Data.Email;
             _ePhone = env.Data.PhoneNumber;
+            _eRemark = env.Data.Remark;
             _eRoles.Clear();
             foreach (var r in env.Data.Roles)
                 _eRoles.Add(r);
-            _eOrgIds.Clear();
-            foreach (var o in env.Data.OrganizationIds)
-                _eOrgIds.Add(o);
+            _eDepartmentIdStr = env.Data.DepartmentId?.ToString() ?? "";
 
             _eIsActive = env.Data.IsActive;
             _editAttempted = false;
@@ -876,7 +1146,8 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
     {
         try
         {
-            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<UserListItemDto>>>("api/users");
+            var api = _selectedOrgId is { } oid ? $"api/users?orgId={oid}" : "api/users";
+            var env = await Http.GetFromJsonAsync<ApiEnvelopeJson<List<UserListItemDto>>>(api);
             _users = env?.Success == true ? env.Data ?? new() : new();
             if (env?.Success == false)
                 _error = env.Message;
@@ -935,6 +1206,8 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
                 _cPassword,
                 string.IsNullOrWhiteSpace(_cEmail) ? null : _cEmail.Trim(),
                 string.IsNullOrWhiteSpace(_cPhone) ? null : _cPhone.Trim(),
+                string.IsNullOrWhiteSpace(_cRemark) ? null : _cRemark.Trim(),
+                ParseNullableLong(_cDepartmentIdStr),
                 _cIsActive,
                 _cRoles.Count > 0 ? _cRoles.ToList() : null);
 
@@ -944,19 +1217,6 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             {
                 _error = ReadErrorText(text);
                 return;
-            }
-
-            var env = JsonSerializer.Deserialize<ApiEnvelopeJson<UserListItemDto>>(text, JsonOpts);
-            var newId = env?.Data?.Id ?? 0;
-            if (newId > 0 && _cOrgIds.Count > 0)
-            {
-                var orgResp = await Http.PostAsJsonAsync($"api/users/{newId}/organizations", new SetUserOrganizationsDto(_cOrgIds.ToList()));
-                if (!orgResp.IsSuccessStatusCode)
-                {
-                    _error = ReadErrorText(await orgResp.Content.ReadAsStringAsync());
-                    await CancelToListAsync();
-                    return;
-                }
             }
 
             _success = "用户已创建。";
@@ -987,6 +1247,8 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             var put = new UpdateUserDto(
                 string.IsNullOrWhiteSpace(_eEmail) ? null : _eEmail.Trim(),
                 _ePhone,
+                string.IsNullOrWhiteSpace(_eRemark) ? null : _eRemark.Trim(),
+                ParseNullableLong(_eDepartmentIdStr),
                 _eIsActive,
                 null);
 
@@ -1001,13 +1263,6 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             if (!rolesResp.IsSuccessStatusCode)
             {
                 _error = ReadErrorText(await rolesResp.Content.ReadAsStringAsync());
-                return;
-            }
-
-            var orgResp = await Http.PostAsJsonAsync($"api/users/{_editId}/organizations", new SetUserOrganizationsDto(_eOrgIds.ToList()));
-            if (!orgResp.IsSuccessStatusCode)
-            {
-                _error = ReadErrorText(await orgResp.Content.ReadAsStringAsync());
                 return;
             }
 
@@ -1133,5 +1388,24 @@ else if (_pane == UserPane.DeleteConfirm && _deleteId is not null)
             foreach (var x in Walk(c, depth + 1))
                 yield return x;
         }
+    }
+
+    private static long? ParseNullableLong(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s))
+            return null;
+        return long.TryParse(s, out var v) ? v : null;
+    }
+
+    private sealed class ColumnVisibilityItem
+    {
+        [JsonPropertyName("field")]
+        public string Field { get; set; } = "";
+
+        [JsonPropertyName("title")]
+        public string Title { get; set; } = "";
+
+        [JsonPropertyName("visible")]
+        public bool Visible { get; set; }
     }
 }
